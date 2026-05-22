@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  ARCHIVED
+}
+
+enum AvailabilityStatus {
+  IN_STOCK
+  LOW_STOCK
+  MADE_TO_ORDER
+  OUT_OF_STOCK
+}
+
+enum BlogStatus {
+  PUBLISHED
+  DRAFT
+}
+
+enum FulfillmentType {
+  SHIPPING
+  PICKUP
+  DROPOFF
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  products    Product[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Product {
+  id              String             @id @default(cuid())
+  name            String
+  slug            String             @unique
+  description     String
+  priceCents      Int
+  imageUrl        String
+  stock           Int                @default(0)
+  availability    AvailabilityStatus @default(IN_STOCK)
+  status          ProductStatus      @default(ACTIVE)
+  featured        Boolean            @default(false)
+  squareCatalogId String?
+  categoryId      String
+  category        Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  socialProof     SocialProofPurchase[]
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model Event {
+  id                String   @id @default(cuid())
+  title             String
+  date              DateTime
+  time              String
+  location          String
+  description       String
+  facebookEventLink String?
+  featured          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model BlogPost {
+  id             String     @id @default(cuid())
+  title          String
+  slug           String     @unique
+  excerpt        String
+  body           String
+  publishedDate  DateTime
+  featuredImage  String?
+  status         BlogStatus @default(DRAFT)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model SiteSetting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  active    Boolean  @default(true)
+  startsAt  DateTime?
+  endsAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model CustomOrderRequest {
+  id             String   @id @default(cuid())
+  name           String
+  email          String
+  phone          String
+  itemType       String
+  designRequest  String
+  neededBy       DateTime?
+  imageNote      String?
+  consent        Boolean
+  status         String   @default("NEW")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model ContactMessage {
+  id               String   @id @default(cuid())
+  name             String
+  email            String
+  phone            String?
+  message          String
+  consent          Boolean
+  marketingConsent Boolean  @default(false)
+  createdAt        DateTime @default(now())
+}
+
+model SocialProofPurchase {
+  id           String   @id @default(cuid())
+  customerName String
+  productName  String
+  productId    String?
+  product      Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  fallbackUrl  String?
+  isSample     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+}
