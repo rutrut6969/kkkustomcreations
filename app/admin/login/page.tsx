@@ -1,0 +1,20 @@
+import { loginAdmin } from "@/app/admin/actions";
+import { AdminForm } from "@/components/admin-form";
+
+export default function AdminLoginPage({ searchParams }: { searchParams: { next?: string } }) {
+  return (
+    <section className="container-page grid min-h-[70vh] place-items-center py-10">
+      <div className="w-full max-w-md">
+        <div className="mb-5 text-center">
+          <p className="text-sm font-black uppercase tracking-[0.16em] text-aqua-700">Admin</p>
+          <h1 className="text-3xl font-black">K&K Kustom Kreations</h1>
+        </div>
+        <AdminForm action={loginAdmin} submitLabel="Log in">
+          <input type="hidden" name="next" value={searchParams.next ?? "/admin"} />
+          <input name="email" type="email" required placeholder="Admin email" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input name="password" type="password" required placeholder="Password" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+        </AdminForm>
+      </div>
+    </section>
+  );
+}
