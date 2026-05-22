@@ -1,16 +1,18 @@
-import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { ShoppingBag, Sparkles } from "lucide-react";
 import "./globals.css";
 import { getSettings, getSocialProofPurchases } from "@/lib/data";
 import { SocialProofPopup } from "@/components/social-proof-popup";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   title: "K&K Kustom Kreations",
   description: "Handmade custom cups, tumblers, pens, keychains, badge reels, wristlets, seasonal gifts, and boutique creations."
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1
 };
 
 const navItems = [
@@ -27,7 +29,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body>
         <div className="min-h-screen">
           <header className="sticky top-0 z-40 border-b border-pink-100 bg-white/92 backdrop-blur">
             <div className="container-page flex h-16 items-center justify-between gap-4">

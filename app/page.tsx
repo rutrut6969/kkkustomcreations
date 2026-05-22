@@ -20,7 +20,7 @@ export default async function HomePage() {
   return (
     <>
       <section className="container-page grid gap-8 py-8 md:grid-cols-[1.05fr_0.95fr] md:items-center md:py-14">
-        <div className="space-y-6">
+        <div className="min-w-0 space-y-6">
           {announcements[0] && (
             <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-pink-100 bg-white px-4 py-2 text-sm font-bold shadow-soft">
               <Sparkles size={16} className="text-boutique-pink" />
@@ -29,19 +29,19 @@ export default async function HomePage() {
           )}
           <div className="space-y-4">
             <p className="text-sm font-black uppercase tracking-[0.18em] text-aqua-700">Handmade boutique crafts</p>
-            <h1 className="text-4xl font-black leading-tight text-boutique-charcoal sm:text-5xl lg:text-6xl">
+            <h1 className="break-words text-4xl font-black leading-tight text-boutique-charcoal sm:text-5xl lg:text-6xl">
               K&K Kustom Kreations
             </h1>
             <p className="max-w-xl text-lg leading-8 text-boutique-charcoal/75">
               {settings.homepageBannerText ?? "Handmade gifts, custom sparkle, and vendor-market favorites."}
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
             <ButtonLink href="/shop">Shop ready-made</ButtonLink>
             <ButtonLink href="/custom-orders" variant="secondary">Start a custom order</ButtonLink>
           </div>
         </div>
-        <div className="relative min-h-[360px] overflow-hidden rounded-boutique bg-aqua-100 shadow-pink">
+        <div className="relative min-h-[360px] min-w-0 overflow-hidden rounded-boutique bg-aqua-100 shadow-pink">
           <Image
             src="https://images.unsplash.com/photo-1452860606245-08befc0ff44b?auto=format&fit=crop&w=1200&q=80"
             alt="Colorful handmade craft supplies"

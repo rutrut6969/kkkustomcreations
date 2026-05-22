@@ -39,16 +39,38 @@ export function squareConfig() {
   const missing = [
     !accessToken && `${prefix}_ACCESS_TOKEN`,
     !applicationId && `${prefix}_APPLICATION_ID`,
-    !locationId && `${prefix}_LOCATION_ID`,
     !siteUrl && "NEXT_PUBLIC_SITE_URL"
   ].filter(Boolean) as string[];
   return { env, accessToken, applicationId, locationId, siteUrl, baseUrl, missing };
+}
+
+async function resolveLocationId(config: ReturnType<typeof squareConfig>) {
+  if (config.locationId) return config.locationId;
+  if (!config.accessToken) return null;
+
+  const response = await fetch(`${config.baseUrl}/v2/locations`, {
+    headers: {
+      "Square-Version": "2025-04-16",
+      Authorization: `Bearer ${config.accessToken}`
+    }
+  });
+  const result = await response.json();
+  if (!response.ok) {
+    const message = Array.isArray(result.errors) ? result.errors.map((error: { detail?: string }) => error.detail).join(" ") : "Unable to fetch Square locations.";
+    throw new Error(message || "Unable to fetch Square locations.");
+  }
+  const location = result.locations?.find((item: { status?: string }) => item.status === "ACTIVE") ?? result.locations?.[0];
+  return location?.id as string | undefined;
 }
 
 export async function createSquarePaymentLink(payload: CheckoutPayload) {
   const config = squareConfig();
   if (config.missing.length) {
     throw new Error(`Missing Square configuration: ${config.missing.join(", ")}`);
+  }
+  const locationId = await resolveLocationId(config);
+  if (!locationId) {
+    throw new Error(`Missing Square configuration: SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_LOCATION_ID`);
   }
 
   const address = [payload.address1, payload.city, payload.state, payload.postalCode].filter(Boolean).join(", ");
@@ -71,7 +93,7 @@ export async function createSquarePaymentLink(payload: CheckoutPayload) {
       ask_for_shipping_address: payload.fulfillmentType === "SHIPPING"
     },
     order: {
-      location_id: config.locationId,
+      location_id: locationId,
       reference_id: `kk-${Date.now()}`,
       customer_email: payload.email,
       line_items: payload.items.map((item) => ({
