@@ -130,21 +130,33 @@ export async function getSquareSyncDashboard() {
     hasAccessToken: Boolean(process.env[`${prefix}_ACCESS_TOKEN`]),
     hasApplicationId: Boolean(process.env[`${prefix}_APPLICATION_ID`]),
     hasLocationId: Boolean(process.env[`${prefix}_LOCATION_ID`]),
+    hasSandboxToken: Boolean(process.env.SQUARE_SANDBOX_ACCESS_TOKEN),
+    hasSandboxApplicationId: Boolean(process.env.SQUARE_SANDBOX_APPLICATION_ID),
+    hasSandboxLocationId: Boolean(process.env.SQUARE_SANDBOX_LOCATION_ID),
+    hasProductionToken: Boolean(process.env.SQUARE_PRODUCTION_ACCESS_TOKEN),
+    hasProductionApplicationId: Boolean(process.env.SQUARE_PRODUCTION_APPLICATION_ID),
+    hasProductionLocationId: Boolean(process.env.SQUARE_PRODUCTION_LOCATION_ID),
     hasWebhookKey: Boolean(process.env.SQUARE_WEBHOOK_SIGNATURE_KEY),
     lastCatalogPull: "Not synced yet",
+    lastCategoryPush: "Not synced yet",
     lastOrderImport: "Not synced yet",
+    lastSuccessfulCheckout: "Not recorded yet",
+    lastInventoryAdjustment: "Not adjusted yet",
     recentLogs: [] as { id: string; action: string; status: SquareSyncStatus; message: string | null; createdAt: Date }[]
   };
   if (!hasDatabaseUrl()) return fallback;
   const [settings, recentLogs] = await Promise.all([
-    prisma.siteSetting.findMany({ where: { key: { in: ["squareLastCatalogPull", "squareLastOrderImport"] } } }),
+    prisma.siteSetting.findMany({ where: { key: { in: ["squareLastCatalogPull", "squareLastOrderImport", "squareLastCategoryPush", "squareLastSuccessfulCheckout", "squareLastInventoryAdjustment"] } } }),
     prisma.squareSyncLog.findMany({ orderBy: { createdAt: "desc" }, take: 8 })
   ]);
   const settingMap = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]));
   return {
     ...fallback,
     lastCatalogPull: settingMap.squareLastCatalogPull ?? fallback.lastCatalogPull,
+    lastCategoryPush: settingMap.squareLastCategoryPush ?? fallback.lastCategoryPush,
     lastOrderImport: settingMap.squareLastOrderImport ?? fallback.lastOrderImport,
+    lastSuccessfulCheckout: settingMap.squareLastSuccessfulCheckout ?? fallback.lastSuccessfulCheckout,
+    lastInventoryAdjustment: settingMap.squareLastInventoryAdjustment ?? fallback.lastInventoryAdjustment,
     recentLogs
   };
 }
@@ -167,7 +179,7 @@ async function upsertSquareCategory(object: SquareCatalogObject) {
   if (!name) return null;
   const slug = slugify(name);
   const existing = await prisma.category.findFirst({
-    where: { OR: [{ squareCatalogId: object.id }, { slug }] }
+    where: { OR: [{ squareCatalogId: object.id }, { slug }, { name: { equals: name, mode: "insensitive" } }] }
   });
   const data = {
     name,
@@ -282,31 +294,118 @@ export async function pullSquareCatalogIntoWebsite() {
   }
 }
 
+export async function pullSquareCategoriesIntoWebsite() {
+  if (!hasDatabaseUrl()) throw new Error("DATABASE_URL is required for Square category sync.");
+  try {
+    await writeSquareSyncLog("categories.pull", SquareSyncStatus.PENDING, "Pulling Square categories.");
+    const objects = (await listCatalogObjects()).filter((item) => item.type === "CATEGORY");
+    for (const object of objects) {
+      await upsertSquareCategory(object);
+    }
+    const message = `Imported ${objects.length} categories from Square.`;
+    await setSquareSetting("squareLastCategoryPull", new Date().toLocaleString());
+    await writeSquareSyncLog("categories.pull", SquareSyncStatus.SYNCED, message, { count: objects.length });
+    return message;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Square category pull failed.";
+    await writeSquareSyncLog("categories.pull", SquareSyncStatus.ERROR, message);
+    throw error;
+  }
+}
+
 export async function pushCategoryToSquare(categoryId: string) {
   const category = await prisma.category.findUnique({ where: { id: categoryId } });
   if (!category) throw new Error("Category not found.");
-  const object: SquareCatalogObject = {
-    type: "CATEGORY",
-    id: category.squareCatalogId ?? `#kk_category_${category.id}`,
-    version: category.squareVersion ? Number(category.squareVersion) : undefined,
-    category_data: { name: category.name }
-  };
-  const result = await squareRequest<{ catalog_object: SquareCatalogObject }>("/v2/catalog/object", {
-    method: "POST",
-    body: JSON.stringify({ idempotency_key: crypto.randomUUID(), object })
+  try {
+    await prisma.category.update({ where: { id: category.id }, data: { syncStatus: SquareSyncStatus.PENDING, syncError: null } });
+    const object: SquareCatalogObject = {
+      type: "CATEGORY",
+      id: category.squareCatalogId ?? `#kk_category_${category.id}`,
+      version: category.squareVersion ? Number(category.squareVersion) : undefined,
+      category_data: { name: category.name }
+    };
+    const result = await squareRequest<{ catalog_object: SquareCatalogObject }>("/v2/catalog/object", {
+      method: "POST",
+      body: JSON.stringify({ idempotency_key: crypto.randomUUID(), object })
+    });
+    await prisma.category.update({
+      where: { id: category.id },
+      data: {
+        squareCatalogId: result.catalog_object.id,
+        squareVersion: version(result.catalog_object.version),
+        squareUpdatedAt: asDate(result.catalog_object.updated_at),
+        lastSyncedAt: new Date(),
+        syncStatus: SquareSyncStatus.SYNCED,
+        syncError: null
+      }
+    });
+    await writeSquareSyncLog("category.push", SquareSyncStatus.SYNCED, `Pushed ${category.name} to Square.`, { categoryId });
+    return result.catalog_object;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Category sync failed.";
+    await prisma.category.update({ where: { id: categoryId }, data: { syncStatus: SquareSyncStatus.ERROR, syncError: message } }).catch(() => undefined);
+    await writeSquareSyncLog("category.push", SquareSyncStatus.ERROR, message, { categoryId });
+    throw error;
+  }
+}
+
+export async function pushAllCategoriesToSquare() {
+  if (!hasDatabaseUrl()) throw new Error("DATABASE_URL is required for Square category sync.");
+  const categories = await prisma.category.findMany({ where: { visible: true }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
+  for (const category of categories) {
+    await pushCategoryToSquare(category.id);
+  }
+  const message = `Pushed ${categories.length} visible categories to Square.`;
+  await setSquareSetting("squareLastCategoryPush", new Date().toLocaleString());
+  await writeSquareSyncLog("categories.pushAll", SquareSyncStatus.SYNCED, message, { count: categories.length });
+  return message;
+}
+
+export async function syncCategoryRelationships(categoryId?: string) {
+  if (!hasDatabaseUrl()) throw new Error("DATABASE_URL is required for Square relationship sync.");
+  const products = await prisma.product.findMany({
+    where: {
+      status: { not: "ARCHIVED" },
+      ...(categoryId ? { categoryId } : {})
+    },
+    select: { id: true }
   });
-  await prisma.category.update({
-    where: { id: category.id },
-    data: {
-      squareCatalogId: result.catalog_object.id,
-      squareVersion: version(result.catalog_object.version),
-      squareUpdatedAt: asDate(result.catalog_object.updated_at),
-      lastSyncedAt: new Date(),
-      syncStatus: SquareSyncStatus.SYNCED,
-      syncError: null
+  for (const product of products) {
+    await pushProductToSquare(product.id);
+  }
+  const message = `Synced Square category relationships for ${products.length} products.`;
+  await writeSquareSyncLog("categories.relationships", SquareSyncStatus.SYNCED, message, { categoryId, count: products.length });
+  return message;
+}
+
+export async function archiveCategoryInSquare(categoryId: string) {
+  if (!hasDatabaseUrl()) throw new Error("DATABASE_URL is required for Square category sync.");
+  const category = await prisma.category.findUnique({ where: { id: categoryId }, include: { _count: { select: { products: true } } } });
+  if (!category) throw new Error("Category not found.");
+  try {
+    if (category.squareCatalogId && category._count.products === 0) {
+      await squareRequest(`/v2/catalog/object/${category.squareCatalogId}`, { method: "DELETE" });
+      await writeSquareSyncLog("category.delete", SquareSyncStatus.SYNCED, `Deleted unused category ${category.name} in Square.`, { categoryId });
+    } else if (category.squareCatalogId) {
+      await writeSquareSyncLog("category.delete", SquareSyncStatus.SKIPPED, `Skipped Square delete for ${category.name} because products still use it.`, { categoryId, products: category._count.products });
     }
-  });
-  return result.catalog_object;
+    await prisma.category.update({
+      where: { id: categoryId },
+      data: {
+        visible: false,
+        syncStatus: category._count.products === 0 ? SquareSyncStatus.SYNCED : SquareSyncStatus.SKIPPED,
+        syncError: category._count.products === 0 ? null : "Square delete skipped because products still use this category.",
+        lastSyncedAt: new Date()
+      }
+    });
+    if (category._count.products > 0) await syncCategoryRelationships(categoryId);
+    return category._count.products === 0 ? `Hid ${category.name} locally and deleted it in Square.` : `Hid ${category.name} locally. Square delete skipped because products still use it.`;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Category archive sync failed.";
+    await prisma.category.update({ where: { id: categoryId }, data: { syncStatus: SquareSyncStatus.ERROR, syncError: message } }).catch(() => undefined);
+    await writeSquareSyncLog("category.delete", SquareSyncStatus.ERROR, message, { categoryId });
+    throw error;
+  }
 }
 
 export async function pushProductToSquare(productId: string) {

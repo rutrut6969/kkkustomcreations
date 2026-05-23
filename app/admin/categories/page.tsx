@@ -1,5 +1,6 @@
-import { deleteCategory, saveCategory } from "@/app/admin/actions";
+import { archiveCategoryInSquareAction, deleteCategory, pushCategoryToSquareAction, saveCategory } from "@/app/admin/actions";
 import { AdminForm } from "@/components/admin-form";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { AdminCard, AdminPageHeader, StatusPill } from "@/components/admin/admin-ui";
 import { getAdminCategories } from "@/lib/admin-data";
 
@@ -10,7 +11,7 @@ export default async function AdminCategoriesPage() {
 
   return (
     <div>
-      <AdminPageHeader title="Categories" eyebrow="Catalog structure" description="Manage shop categories, visibility, ordering, descriptions, and future banner imagery." />
+      <AdminPageHeader title="Categories" eyebrow="Catalog structure" description="Manage shop categories, visibility, ordering, Square IDs, and product/category relationships." />
       <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <AdminForm action={saveCategory} submitLabel="Create category">
           <h2 className="font-black">New category</h2>
@@ -25,17 +26,34 @@ export default async function AdminCategoriesPage() {
           {categories.map((category) => (
             <AdminCard key={category.id} className="p-0">
               <details>
-                <summary className="grid cursor-pointer gap-2 p-4 sm:grid-cols-[1fr_auto] sm:items-center">
+                <summary className="grid cursor-pointer gap-2 p-4 md:grid-cols-[1fr_auto] md:items-center">
                   <div>
                     <p className="font-black">{category.name}</p>
-                    <p className="text-sm text-boutique-charcoal/60">{category.slug} · {category._count.products} products</p>
+                    <p className="text-sm text-boutique-charcoal/60">{category.slug} - {category._count.products} products</p>
+                    <p className="mt-1 text-xs font-bold text-boutique-charcoal/45">
+                      Square: {category.squareCatalogId ?? "not linked"} {category.lastSyncedAt ? `- synced ${category.lastSyncedAt.toLocaleString()}` : ""}
+                    </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <StatusPill tone={category.visible ? "aqua" : "neutral"}>{category.visible ? "Visible" : "Hidden"}</StatusPill>
                     <StatusPill>Order {category.sortOrder}</StatusPill>
+                    <StatusPill tone={category.syncStatus === "SYNCED" ? "aqua" : category.syncStatus === "ERROR" ? "pink" : "neutral"}>{category.syncStatus.replaceAll("_", " ")}</StatusPill>
                   </div>
                 </summary>
                 <div className="border-t border-pink-100 p-4">
+                  {category.syncError && (
+                    <p className="mb-4 rounded-xl bg-boutique-blush p-3 text-sm font-bold text-boutique-pink">
+                      Square sync note: {category.syncError}
+                    </p>
+                  )}
+                  <div className="mb-4 grid gap-3 rounded-2xl border border-aqua-100 bg-aqua-50/70 p-3 md:grid-cols-2">
+                    <AdminActionForm action={pushCategoryToSquareAction} label="Push category to Square" tone="pink">
+                      <input type="hidden" name="id" value={category.id} />
+                    </AdminActionForm>
+                    <AdminActionForm action={archiveCategoryInSquareAction} label="Hide/archive category" tone="neutral">
+                      <input type="hidden" name="id" value={category.id} />
+                    </AdminActionForm>
+                  </div>
                   <AdminForm action={saveCategory} submitLabel="Save category">
                     <input type="hidden" name="id" value={category.id} />
                     <input aria-label="Category name" name="name" defaultValue={category.name} className="form-control" />
@@ -48,7 +66,7 @@ export default async function AdminCategoriesPage() {
                   {category._count.products === 0 && (
                     <form action={deleteCategory} className="mt-3">
                       <input type="hidden" name="id" value={category.id} />
-                      <button className="text-sm font-black text-boutique-pink">Delete category</button>
+                      <button className="text-sm font-black text-boutique-pink">Delete local category</button>
                     </form>
                   )}
                 </div>

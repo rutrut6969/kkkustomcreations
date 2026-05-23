@@ -85,6 +85,12 @@ export async function getAdminCategories() {
       bannerImageUrl: null,
       visible: true,
       sortOrder: index,
+      squareCatalogId: null,
+      squareVersion: null,
+      squareUpdatedAt: null,
+      lastSyncedAt: null,
+      syncStatus: "NOT_SYNCED" as const,
+      syncError: null,
       _count: { products: sampleProducts.filter((product) => product.category.slug === category.slug).length }
     }) as any)
   );

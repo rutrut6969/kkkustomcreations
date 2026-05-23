@@ -11,8 +11,13 @@ import { slugify } from "@/lib/format";
 import {
   archiveProductInSquare,
   importSquareOrders,
+  archiveCategoryInSquare,
+  pullSquareCategoriesIntoWebsite,
   pullSquareCatalogIntoWebsite,
+  pushAllCategoriesToSquare,
+  pushCategoryToSquare,
   pushProductToSquare,
+  syncCategoryRelationships,
   syncProductInventoryToSquare
 } from "@/lib/square-sync";
 
@@ -212,6 +217,40 @@ export async function deleteCategory(formData: FormData) {
   revalidatePath("/admin/categories");
 }
 
+export async function pushCategoryToSquareAction(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Category id is required." };
+  try {
+    const category = await pushCategoryToSquare(id);
+    await syncCategoryRelationships(id);
+    revalidatePath("/admin/categories");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message: `Synced ${category.category_data?.name ?? "category"} to Square.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square category sync failed." };
+  }
+}
+
+export async function archiveCategoryInSquareAction(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Category id is required." };
+  try {
+    const message = await archiveCategoryInSquare(id);
+    revalidatePath("/shop");
+    revalidatePath("/admin/categories");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square category archive failed." };
+  }
+}
+
 export async function saveOrder(_state: AdminState, formData: FormData): Promise<AdminState> {
   const noDb = requireDb();
   if (noDb) return noDb;
@@ -406,6 +445,35 @@ export async function pullSquareCatalogAction(_state: AdminState, _formData: For
     return { ok: true, message };
   } catch (error) {
     return { ok: false, message: error instanceof Error ? error.message : "Square catalog pull failed." };
+  }
+}
+
+export async function pullSquareCategoriesAction(_state: AdminState, _formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  try {
+    const message = await pullSquareCategoriesIntoWebsite();
+    revalidatePath("/shop");
+    revalidatePath("/admin/categories");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square category pull failed." };
+  }
+}
+
+export async function pushAllCategoriesAction(_state: AdminState, _formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  try {
+    const message = await pushAllCategoriesToSquare();
+    await syncCategoryRelationships();
+    revalidatePath("/admin/categories");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square category push failed." };
   }
 }
 

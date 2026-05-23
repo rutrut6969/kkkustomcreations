@@ -1,4 +1,4 @@
-import { pullSquareCatalogAction, importSquareOrdersAction } from "@/app/admin/actions";
+import { importSquareOrdersAction, pullSquareCatalogAction, pullSquareCategoriesAction, pushAllCategoriesAction } from "@/app/admin/actions";
 import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { AdminCard, AdminPageHeader, StatusPill } from "@/components/admin/admin-ui";
 import { getSquareSyncDashboard } from "@/lib/square-sync";
@@ -20,17 +20,29 @@ export default async function AdminIntegrationsPage() {
             <StatusPill tone={square.hasAccessToken && square.hasApplicationId ? "aqua" : "pink"}>{square.hasAccessToken && square.hasApplicationId ? "Configured" : "Needs keys"}</StatusPill>
           </div>
           <div className="mt-4 grid gap-2 text-sm">
-            <p><span className="font-black">Access token:</span> {square.hasAccessToken ? "Present" : "Missing"}</p>
-            <p><span className="font-black">Application ID:</span> {square.hasApplicationId ? "Present" : "Missing"}</p>
-            <p><span className="font-black">Location ID:</span> {square.hasLocationId ? "Present" : "Can auto-discover active location"}</p>
+            <p><span className="font-black">Active access token:</span> {square.hasAccessToken ? "Present" : "Missing"}</p>
+            <p><span className="font-black">Active application ID:</span> {square.hasApplicationId ? "Present" : "Missing"}</p>
+            <p><span className="font-black">Active location ID:</span> {square.hasLocationId ? "Present" : "Can auto-discover active location"}</p>
+            <p><span className="font-black">Sandbox keys:</span> {square.hasSandboxToken && square.hasSandboxApplicationId ? "Ready" : "Missing token/app"} {square.hasSandboxLocationId ? "with location" : "auto-location"}</p>
+            <p><span className="font-black">Production keys:</span> {square.hasProductionToken && square.hasProductionApplicationId ? "Ready" : "Missing token/app"} {square.hasProductionLocationId ? "with location" : "auto-location"}</p>
             <p><span className="font-black">Webhook signature key:</span> {square.hasWebhookKey ? "Present" : "Missing"}</p>
             <p><span className="font-black">Last catalog pull:</span> {square.lastCatalogPull}</p>
+            <p><span className="font-black">Last category push:</span> {square.lastCategoryPush}</p>
             <p><span className="font-black">Last order import:</span> {square.lastOrderImport}</p>
+            <p><span className="font-black">Last successful checkout:</span> {square.lastSuccessfulCheckout}</p>
+            <p><span className="font-black">Last inventory adjustment:</span> {square.lastInventoryAdjustment}</p>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             <AdminActionForm action={pullSquareCatalogAction} label="Pull catalog from Square" tone="pink" />
+            <AdminActionForm action={pullSquareCategoriesAction} label="Pull categories only" tone="aqua" />
+            <AdminActionForm action={pushAllCategoriesAction} label="Push all categories" tone="neutral" />
             <AdminActionForm action={importSquareOrdersAction} label="Import Square orders" tone="aqua" />
           </div>
+          {square.environment === "production" && (!square.hasProductionToken || !square.hasProductionApplicationId) && (
+            <p className="mt-4 rounded-xl bg-boutique-blush p-3 text-sm font-bold text-boutique-pink">
+              Production mode is active, but production Square token/application keys are missing.
+            </p>
+          )}
         </AdminCard>
         <AdminCard>
           <h2 className="font-black">Source of truth</h2>
