@@ -1,6 +1,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { hasDatabaseUrl, prisma } from "@/lib/prisma";
 
 const checkoutSchema = z.object({
   items: z.array(z.object({
@@ -111,6 +112,7 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
 
   const amountCents = payload.items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
   const address = [payload.address1, payload.city, payload.state, payload.postalCode].filter(Boolean).join(", ");
+  const orderId = await createSquareOrderForDirectPayment(payload, locationId);
   const response = await fetch(`${config.baseUrl}/v2/payments`, {
     method: "POST",
     headers: {
@@ -127,6 +129,7 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
         currency: "USD"
       },
       location_id: locationId,
+      order_id: orderId,
       autocomplete: true,
       buyer_email_address: payload.email,
       note: [
@@ -155,6 +158,96 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
     throw new Error(message || "Square payment failed.");
   }
   return result.payment as { id: string; order_id?: string; status?: string };
+}
+
+async function createSquareOrderForDirectPayment(payload: DirectPaymentPayload, locationId: string) {
+  const config = squareConfig();
+  const productIds = payload.items.map((item) => item.productId);
+  const products = hasDatabaseUrl()
+    ? await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        include: { variants: true }
+      })
+    : [];
+  const productMap = new Map(products.map((product) => [product.id, product]));
+  const address = [payload.address1, payload.city, payload.state, payload.postalCode].filter(Boolean).join(", ");
+
+  const response = await fetch(`${config.baseUrl}/v2/orders`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Square-Version": "2025-04-16",
+      Authorization: `Bearer ${config.accessToken}`
+    },
+    body: JSON.stringify({
+      idempotency_key: crypto.randomUUID(),
+      order: {
+        location_id: locationId,
+        reference_id: `kk-direct-${Date.now()}`,
+        customer_email: payload.email,
+        line_items: payload.items.map((item) => {
+          const product = productMap.get(item.productId);
+          const variation = product?.variants.find((variant) => variant.squareCatalogId);
+          return {
+            name: item.name,
+            quantity: String(item.quantity),
+            catalog_object_id: variation?.squareCatalogId ?? undefined,
+            base_price_money: {
+              amount: item.priceCents,
+              currency: "USD"
+            },
+            note: payload.notes || undefined
+          };
+        }),
+        fulfillments: [
+          {
+            type: payload.fulfillmentType === "SHIPPING" ? "SHIPMENT" : "PICKUP",
+            state: "PROPOSED",
+            [payload.fulfillmentType === "SHIPPING" ? "shipment_details" : "pickup_details"]:
+              payload.fulfillmentType === "SHIPPING"
+                ? {
+                    recipient: {
+                      display_name: payload.name,
+                      email_address: payload.email,
+                      phone_number: payload.phone,
+                      address: {
+                        address_line_1: payload.address1,
+                        locality: payload.city,
+                        administrative_district_level_1: payload.state,
+                        postal_code: payload.postalCode,
+                        country: "US"
+                      }
+                    }
+                  }
+                : {
+                    recipient: {
+                      display_name: payload.name,
+                      email_address: payload.email,
+                      phone_number: payload.phone
+                    },
+                    schedule_type: "ASAP",
+                    note: payload.fulfillmentType === "DROPOFF" ? `Local dropoff requested. ${address}` : "Local pickup requested."
+                  }
+          }
+        ],
+        metadata: {
+          source: "kk_website_direct_checkout",
+          fulfillmentType: payload.fulfillmentType,
+          consent: "true",
+          marketingConsent: payload.marketingConsent ? "true" : "false"
+        }
+      }
+    })
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    const message = Array.isArray(result.errors) ? result.errors.map((error: { detail?: string }) => error.detail).join(" ") : "Square order creation failed.";
+    throw new Error(message || "Square order creation failed.");
+  }
+  const id = result.order?.id;
+  if (!id) throw new Error("Square did not return an order id.");
+  return id as string;
 }
 
 export async function createSquarePaymentLink(payload: CheckoutPayload) {

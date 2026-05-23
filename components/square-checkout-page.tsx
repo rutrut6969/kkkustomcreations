@@ -126,6 +126,7 @@ export function SquareCheckoutPage() {
   async function submitPayment(event: FormEvent, paymentMethod: "card" | "afterpay_clearpay") {
     event.preventDefault();
     if (!formRef.current) return;
+    if (!formRef.current.reportValidity()) return;
     if (!items.length) {
       setMessage("Your cart is empty.");
       return;
