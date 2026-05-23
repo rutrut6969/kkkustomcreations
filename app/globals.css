@@ -75,3 +75,22 @@ textarea {
 .social-proof-enter {
   animation: social-proof-in 220ms ease-out both;
 }
+
+@keyframes cart-indicator-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 14px 30px rgba(255, 105, 168, 0.22);
+  }
+  45% {
+    transform: scale(1.045);
+    box-shadow: 0 14px 34px rgba(98, 242, 228, 0.36);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 14px 30px rgba(255, 105, 168, 0.22);
+  }
+}
+
+.cart-indicator-pulse {
+  animation: cart-indicator-pulse 360ms ease-out both;
+}

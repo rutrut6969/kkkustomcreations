@@ -23,7 +23,6 @@ export function AddToCartButton({
       onClick={() => {
         addCartItem(product, 1);
         setAdded(true);
-        window.dispatchEvent(new Event("cart-updated"));
         setTimeout(() => setAdded(false), 1600);
       }}
       className={clsx(

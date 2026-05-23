@@ -28,6 +28,18 @@ export function parseCheckoutPayload(input: unknown) {
   return checkoutSchema.safeParse(input);
 }
 
+const directPaymentSchema = checkoutSchema.extend({
+  sourceId: z.string().min(1),
+  verificationToken: z.string().optional(),
+  paymentMethod: z.enum(["card", "afterpay_clearpay"]).default("card")
+});
+
+export type DirectPaymentPayload = z.infer<typeof directPaymentSchema>;
+
+export function parseDirectPaymentPayload(input: unknown) {
+  return directPaymentSchema.safeParse(input);
+}
+
 export function squareConfig() {
   const env = process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox";
   const prefix = env === "production" ? "SQUARE_PRODUCTION" : "SQUARE_SANDBOX";
@@ -44,7 +56,7 @@ export function squareConfig() {
   return { env, accessToken, applicationId, locationId, siteUrl, baseUrl, missing };
 }
 
-async function resolveLocationId(config: ReturnType<typeof squareConfig>) {
+export async function resolveLocationId(config: ReturnType<typeof squareConfig>) {
   if (config.locationId) return config.locationId;
   if (!config.accessToken) return null;
 
@@ -61,6 +73,88 @@ async function resolveLocationId(config: ReturnType<typeof squareConfig>) {
   }
   const location = result.locations?.find((item: { status?: string }) => item.status === "ACTIVE") ?? result.locations?.[0];
   return location?.id as string | undefined;
+}
+
+export async function squareWebSdkConfig() {
+  const config = squareConfig();
+  const missing = [
+    !config.accessToken && `SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_ACCESS_TOKEN`,
+    !config.applicationId && `SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_APPLICATION_ID`
+  ].filter(Boolean) as string[];
+  if (missing.length) {
+    throw new Error(`Missing Square configuration: ${missing.join(", ")}`);
+  }
+  const locationId = await resolveLocationId(config);
+  if (!locationId) {
+    throw new Error(`Missing Square configuration: SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_LOCATION_ID`);
+  }
+  return {
+    environment: config.env,
+    applicationId: config.applicationId,
+    locationId,
+    sdkUrl: config.env === "production" ? "https://web.squarecdn.com/v1/square.js" : "https://sandbox.web.squarecdn.com/v1/square.js"
+  };
+}
+
+export async function createSquarePayment(payload: DirectPaymentPayload) {
+  const config = squareConfig();
+  const missing = [
+    !config.accessToken && `SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_ACCESS_TOKEN`
+  ].filter(Boolean) as string[];
+  if (missing.length) {
+    throw new Error(`Missing Square configuration: ${missing.join(", ")}`);
+  }
+  const locationId = await resolveLocationId(config);
+  if (!locationId) {
+    throw new Error(`Missing Square configuration: SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_LOCATION_ID`);
+  }
+
+  const amountCents = payload.items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+  const address = [payload.address1, payload.city, payload.state, payload.postalCode].filter(Boolean).join(", ");
+  const response = await fetch(`${config.baseUrl}/v2/payments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Square-Version": "2025-04-16",
+      Authorization: `Bearer ${config.accessToken}`
+    },
+    body: JSON.stringify({
+      source_id: payload.sourceId,
+      idempotency_key: crypto.randomUUID(),
+      verification_token: payload.verificationToken || undefined,
+      amount_money: {
+        amount: amountCents,
+        currency: "USD"
+      },
+      location_id: locationId,
+      autocomplete: true,
+      buyer_email_address: payload.email,
+      note: [
+        `K&K website checkout`,
+        `Fulfillment: ${payload.fulfillmentType}`,
+        `Customer: ${payload.name}`,
+        `Phone: ${payload.phone}`,
+        address && `Address: ${address}`,
+        payload.notes && `Notes: ${payload.notes}`,
+        `Payment method: ${payload.paymentMethod}`,
+        `Required consent: yes`,
+        `Marketing consent: ${payload.marketingConsent ? "yes" : "no"}`
+      ].filter(Boolean).join("\n"),
+      metadata: {
+        source: "kk_website",
+        fulfillmentType: payload.fulfillmentType,
+        consent: "true",
+        marketingConsent: payload.marketingConsent ? "true" : "false"
+      }
+    })
+  });
+
+  const result = await response.json();
+  if (!response.ok) {
+    const message = Array.isArray(result.errors) ? result.errors.map((error: { detail?: string }) => error.detail).join(" ") : "Square payment failed.";
+    throw new Error(message || "Square payment failed.");
+  }
+  return result.payment as { id: string; order_id?: string; status?: string };
 }
 
 export async function createSquarePaymentLink(payload: CheckoutPayload) {

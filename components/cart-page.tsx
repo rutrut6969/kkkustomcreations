@@ -2,22 +2,22 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Minus, Plus, Trash2 } from "lucide-react";
+import { CreditCard, ExternalLink, Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { clearCart, getCart, saveCart, type CartItem } from "@/lib/cart";
+import { clearCart, getCart, getCartSummary, notifyCartUpdated, saveCart, type CartItem } from "@/lib/cart";
 import { formatMoney } from "@/lib/format";
 
 export function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0), [items]);
+  const subtotal = useMemo(() => getCartSummary(items).subtotalCents, [items]);
 
   useEffect(() => setItems(getCart()), []);
 
   function update(itemsNext: CartItem[]) {
     setItems(itemsNext);
     saveCart(itemsNext);
-    window.dispatchEvent(new Event("cart-updated"));
+    notifyCartUpdated();
   }
 
   async function checkout(formData: FormData) {
@@ -145,8 +145,17 @@ export function CartPage() {
             <input name="marketingConsent" type="checkbox" className="mt-1 h-4 w-4 accent-boutique-pink" />
             <span>I would like to receive updates about new products, events, and promotions.</span>
           </label>
-          <button disabled={loading || items.length === 0} className="focus-ring rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink disabled:cursor-not-allowed disabled:opacity-50">
-            {loading ? "Starting Square checkout..." : "Checkout with Square"}
+          <Link
+            href="/checkout"
+            aria-disabled={items.length === 0}
+            className="focus-ring inline-flex items-center justify-center gap-2 rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink aria-disabled:pointer-events-none aria-disabled:opacity-50"
+          >
+            <CreditCard size={18} aria-hidden="true" />
+            Pay on this site
+          </Link>
+          <button disabled={loading || items.length === 0} className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-pink-100 bg-white px-5 py-3 font-black text-boutique-charcoal shadow-soft disabled:cursor-not-allowed disabled:opacity-50">
+            <ExternalLink size={18} aria-hidden="true" />
+            {loading ? "Starting Square hosted checkout..." : "Use Square hosted checkout"}
           </button>
         </div>
       </form>

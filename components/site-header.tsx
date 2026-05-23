@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, ShoppingBag, Sparkles, X } from "lucide-react";
+import { Menu, Sparkles, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
+import { CartIndicator } from "@/components/cart-indicator";
 
 const navItems = [
   ["Shop", "/shop"],
@@ -57,13 +58,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="flex shrink-0 items-center gap-2">
-          <Link
-            href="/cart"
-            aria-label="Cart"
-            className="focus-ring grid h-10 w-10 place-items-center rounded-full bg-boutique-pink text-white shadow-pink transition hover:-translate-y-0.5"
-          >
-            <ShoppingBag size={19} aria-hidden="true" />
-          </Link>
+          <CartIndicator />
           <button
             type="button"
             aria-label={open ? "Close menu" : "Open menu"}

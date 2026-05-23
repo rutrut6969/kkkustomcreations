@@ -12,6 +12,7 @@ export type CartItem = {
 };
 
 const key = "kk_cart";
+export const cartUpdatedEvent = "cart-updated";
 
 export function getCart(): CartItem[] {
   if (typeof window === "undefined") return [];
@@ -24,6 +25,18 @@ export function getCart(): CartItem[] {
 
 export function saveCart(items: CartItem[]) {
   window.localStorage.setItem(key, JSON.stringify(items));
+}
+
+export function notifyCartUpdated() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(cartUpdatedEvent));
+}
+
+export function getCartSummary(items: CartItem[]) {
+  return {
+    itemCount: items.reduce((sum, item) => sum + item.quantity, 0),
+    subtotalCents: items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0)
+  };
 }
 
 export function addCartItem(product: ProductView, quantity: number) {
@@ -42,8 +55,10 @@ export function addCartItem(product: ProductView, quantity: number) {
     });
   }
   saveCart(items);
+  notifyCartUpdated();
 }
 
 export function clearCart() {
   saveCart([]);
+  notifyCartUpdated();
 }
