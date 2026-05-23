@@ -16,7 +16,7 @@ export function AdminActionForm({
 }) {
   const [state, formAction] = useFormState(action, {});
   return (
-    <form action={formAction} className="grid gap-2">
+    <form action={formAction} className="grid min-w-0 gap-2">
       {children}
       <ActionSubmit label={label} tone={tone} />
       {state.message && (
@@ -37,7 +37,7 @@ function ActionSubmit({ label, tone }: { label: string; tone: "pink" | "aqua" | 
         ? "border-zinc-200 bg-white text-boutique-charcoal hover:bg-zinc-50"
         : "border-boutique-pink bg-boutique-pink text-white shadow-pink hover:bg-pink-500";
   return (
-    <button disabled={pending} className={`focus-ring rounded-full border px-4 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${toneClass}`}>
+    <button disabled={pending} className={`focus-ring w-full rounded-full border px-4 py-2 text-xs font-black transition disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto ${toneClass}`}>
       {pending ? "Working..." : label}
     </button>
   );

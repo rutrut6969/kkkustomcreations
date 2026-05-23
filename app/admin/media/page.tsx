@@ -23,7 +23,7 @@ export default async function AdminMediaPage() {
           </select>
           <input aria-label="MIME type" name="mimeType" placeholder="image/jpeg" className="form-control" />
         </AdminForm>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {assets.map((asset) => (
             <AdminCard key={asset.id} className="overflow-hidden p-0">
               <div className="relative aspect-[4/3] bg-aqua-50">

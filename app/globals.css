@@ -58,7 +58,30 @@ textarea {
 }
 
 .form-control {
-  @apply focus-ring w-full rounded-xl border border-pink-100 bg-white px-4 py-3 text-base text-boutique-charcoal placeholder:text-boutique-charcoal/45;
+  @apply focus-ring w-full min-w-0 max-w-full rounded-xl border border-pink-100 bg-white px-4 py-3 text-base text-boutique-charcoal placeholder:text-boutique-charcoal/45;
+}
+
+.admin-form,
+.admin-form * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.admin-form input,
+.admin-form select,
+.admin-form textarea,
+.admin-form button {
+  max-width: 100%;
+}
+
+.admin-form input[type="date"],
+.admin-form input[type="datetime-local"],
+.admin-form input[type="time"] {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 @keyframes social-proof-in {

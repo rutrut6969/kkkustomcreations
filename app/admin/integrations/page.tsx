@@ -27,7 +27,7 @@ export default async function AdminIntegrationsPage() {
             <p><span className="font-black">Last catalog pull:</span> {square.lastCatalogPull}</p>
             <p><span className="font-black">Last order import:</span> {square.lastOrderImport}</p>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <AdminActionForm action={pullSquareCatalogAction} label="Pull catalog from Square" tone="pink" />
             <AdminActionForm action={importSquareOrdersAction} label="Import Square orders" tone="aqua" />
           </div>

@@ -24,7 +24,7 @@ export function AdminPageHeader({
 }
 
 export function AdminCard({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <div className={clsx("rounded-2xl border border-pink-100 bg-white p-4 shadow-sm", className)}>{children}</div>;
+  return <div className={clsx("min-w-0 overflow-hidden rounded-2xl border border-pink-100 bg-white p-4 shadow-sm", className)}>{children}</div>;
 }
 
 export function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
@@ -41,7 +41,7 @@ export function StatusPill({ children, tone = "neutral" }: { children: React.Rea
   return (
     <span
       className={clsx(
-        "inline-flex rounded-full px-2.5 py-1 text-xs font-black",
+        "inline-flex max-w-full rounded-full px-2.5 py-1 text-xs font-black",
         tone === "pink" && "bg-boutique-blush text-boutique-pink",
         tone === "aqua" && "bg-aqua-50 text-aqua-700",
         tone === "dark" && "bg-boutique-charcoal text-white",

@@ -33,11 +33,11 @@ export default async function AdminProductsPage() {
             <option value="">Choose category</option>
             {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
           </select>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <input aria-label="Price" name="price" placeholder="Price, e.g. 32.00" className="form-control" />
             <input aria-label="Sale price" name="salePrice" placeholder="Sale price optional" className="form-control" />
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <input aria-label="Inventory stock" name="stock" type="number" min="0" placeholder="Stock" className="form-control" />
             <select aria-label="Availability" name="availability" className="form-control" defaultValue="IN_STOCK">
               {availabilityStatuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
@@ -50,7 +50,7 @@ export default async function AdminProductsPage() {
           <input aria-label="Tags" name="tags" placeholder="Tags, comma separated" className="form-control" />
           <input aria-label="Short description" name="shortDescription" placeholder="Short description" className="form-control" />
           <textarea aria-label="Description" name="description" rows={4} placeholder="Long description" className="form-control" />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <input aria-label="Variant name" name="variantName" placeholder="Variant name, e.g. Color" className="form-control" />
             <input aria-label="Variant value" name="variantValue" placeholder="Variant value, e.g. Aqua" className="form-control" />
           </div>

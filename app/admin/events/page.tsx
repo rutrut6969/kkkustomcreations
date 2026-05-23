@@ -15,7 +15,7 @@ export default async function AdminEventsPage() {
       <div className="grid gap-5 xl:grid-cols-[380px_1fr]">
         <AdminForm action={saveEvent} submitLabel="Create event">
           <input aria-label="Event title" name="title" placeholder="Event title" className="form-control" />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <input aria-label="Event date" name="date" type="date" className="form-control" />
             <input aria-label="Event time" name="time" placeholder="10 AM - 3 PM" className="form-control" />
           </div>
@@ -39,7 +39,7 @@ export default async function AdminEventsPage() {
                   <AdminForm action={saveEvent} submitLabel="Update event">
                     <input type="hidden" name="id" value={event.id} />
                     <input aria-label="Event title" name="title" defaultValue={event.title} className="form-control" />
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       <input aria-label="Event date" name="date" type="date" defaultValue={event.date.toISOString().slice(0, 10)} className="form-control" />
                       <input aria-label="Event time" name="time" defaultValue={event.time} className="form-control" />
                     </div>

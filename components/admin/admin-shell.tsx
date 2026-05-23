@@ -100,7 +100,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <div className="min-h-screen bg-[#f8fbfb] text-boutique-charcoal">
+    <div className="min-h-screen overflow-x-hidden bg-[#f8fbfb] text-boutique-charcoal">
       <div className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:block">{sidebar}</div>
       <div className={clsx("fixed inset-0 z-50 bg-boutique-charcoal/35 transition lg:hidden", open ? "block" : "hidden")} onClick={() => setOpen(false)} />
       <div className={clsx("fixed inset-y-0 left-0 z-50 transition-transform duration-200 lg:hidden", open ? "translate-x-0" : "-translate-x-full")}>
@@ -127,7 +127,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             View Cart
           </Link>
         </header>
-        <main className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-7xl overflow-x-hidden px-3 py-5 sm:px-6 lg:px-8">{children}</main>
       </div>
     </div>
   );
