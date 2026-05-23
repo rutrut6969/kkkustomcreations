@@ -74,18 +74,27 @@ export default async function AdminProductsPage() {
                     <p className="mt-1 text-xs font-bold text-boutique-charcoal/45">
                       Square: {product.squareCatalogId ?? "not linked"} {product.lastSyncedAt ? `· synced ${product.lastSyncedAt.toLocaleString()}` : ""}
                     </p>
+                    <p className="mt-1 text-xs font-bold text-boutique-charcoal/45">
+                      Inventory: {product.inventorySyncedAt ? `synced ${product.inventorySyncedAt.toLocaleString()}` : "not synced"}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {product.featured && <StatusPill tone="pink">Featured</StatusPill>}
                     <StatusPill tone={product.status === "ACTIVE" ? "aqua" : "neutral"}>{product.status}</StatusPill>
                     <StatusPill>{product.availability.replaceAll("_", " ")}</StatusPill>
                     <StatusPill tone={product.syncStatus === "SYNCED" ? "aqua" : product.syncStatus === "ERROR" ? "pink" : "neutral"}>{product.syncStatus.replaceAll("_", " ")}</StatusPill>
+                    <StatusPill tone={product.inventorySyncStatus === "SYNCED" ? "aqua" : product.inventorySyncStatus === "ERROR" ? "pink" : "neutral"}>Inventory {product.inventorySyncStatus.replaceAll("_", " ")}</StatusPill>
                   </div>
                 </summary>
                 <div className="border-t border-pink-100 p-4">
                   {product.syncError && (
                     <p className="mb-4 rounded-xl bg-boutique-blush p-3 text-sm font-bold text-boutique-pink">
                       Square sync error: {product.syncError}
+                    </p>
+                  )}
+                  {product.inventorySyncError && (
+                    <p className="mb-4 rounded-xl bg-boutique-blush p-3 text-sm font-bold text-boutique-pink">
+                      Inventory sync note: {product.inventorySyncError}
                     </p>
                   )}
                   <div className="mb-4 grid gap-3 rounded-2xl border border-aqua-100 bg-aqua-50/70 p-3 md:grid-cols-3">

@@ -74,7 +74,7 @@ function asDate(value?: string) {
   return value ? new Date(value) : null;
 }
 
-async function squareRequest<T>(path: string, init?: RequestInit): Promise<T> {
+export async function squareRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const config = squareConfig();
   if (!config.accessToken) {
     throw new Error(`Missing Square configuration: SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_ACCESS_TOKEN`);
@@ -113,7 +113,7 @@ export async function writeSquareSyncLog(action: string, status: SquareSyncStatu
   });
 }
 
-async function setSquareSetting(key: string, value: string) {
+export async function setSquareSetting(key: string, value: string) {
   if (!hasDatabaseUrl()) return;
   await prisma.siteSetting.upsert({
     where: { key },
@@ -511,13 +511,18 @@ export async function pushProductToSquare(productId: string) {
 export async function syncProductInventoryToSquare(productId: string) {
   if (!hasDatabaseUrl()) throw new Error("DATABASE_URL is required for Square inventory sync.");
   const locationId = await activeLocationId();
-  let product = await prisma.product.findUnique({ where: { id: productId }, include: { variants: true } });
+  const product = await prisma.product.findUnique({ where: { id: productId }, include: { variants: true } });
   if (!product) throw new Error("Product not found.");
   if (!product.variants.some((variant) => variant.squareCatalogId)) {
-    await pushProductToSquare(product.id);
-    product = await prisma.product.findUnique({ where: { id: productId }, include: { variants: true } });
+    const message = `Skipped Square inventory sync for ${product.name}: product is not linked to Square variations.`;
+    await prisma.product.update({
+      where: { id: productId },
+      data: { inventorySyncStatus: SquareSyncStatus.SKIPPED, inventorySyncError: message, inventorySyncedAt: new Date() }
+    });
+    await writeSquareSyncLog("inventory.push", SquareSyncStatus.SKIPPED, message, { productId });
+    return message;
   }
-  const changes = (product?.variants ?? [])
+  const changes = product.variants
     .filter((variant) => variant.squareCatalogId)
     .map((variant) => ({
       type: "PHYSICAL_COUNT",
@@ -536,7 +541,14 @@ export async function syncProductInventoryToSquare(productId: string) {
   });
   await prisma.product.update({
     where: { id: productId },
-    data: { lastSyncedAt: new Date(), syncStatus: SquareSyncStatus.SYNCED, syncError: null }
+    data: {
+      lastSyncedAt: new Date(),
+      syncStatus: SquareSyncStatus.SYNCED,
+      syncError: null,
+      inventorySyncedAt: new Date(),
+      inventorySyncStatus: SquareSyncStatus.SYNCED,
+      inventorySyncError: null
+    }
   });
   await writeSquareSyncLog("inventory.push", SquareSyncStatus.SYNCED, `Synced inventory for ${product?.name}.`, { productId, changes: changes.length });
   return `Synced inventory for ${product?.name}.`;
@@ -619,16 +631,21 @@ export async function importSquareOrders() {
         ? await prisma.order.update({ where: { id: existing.id }, data })
         : await prisma.order.create({ data });
       if (!existing) {
-        await prisma.orderItem.createMany({
-          data: (squareOrder.line_items ?? []).map((item) => ({
+        const items = await Promise.all((squareOrder.line_items ?? []).map(async (item) => {
+          const variant = item.catalog_object_id
+            ? await prisma.productVariant.findFirst({ where: { squareCatalogId: item.catalog_object_id }, select: { productId: true } })
+            : null;
+          return {
             orderId: localOrder.id,
+            productId: variant?.productId ?? null,
             productName: item.name || "Square item",
             quantity: Number(item.quantity ?? 1),
             unitPriceCents: item.base_price_money?.amount ?? item.total_money?.amount ?? 0,
             totalCents: item.total_money?.amount ?? 0,
             customizationNotes: item.note || null
-          }))
-        });
+          };
+        }));
+        await prisma.orderItem.createMany({ data: items });
       }
     }
     const message = `Imported ${orders.length} recent Square orders.`;

@@ -28,6 +28,7 @@ export default async function AdminOrdersPage() {
                   <StatusPill tone="aqua">{order.status.replaceAll("_", " ")}</StatusPill>
                   <StatusPill tone={order.paymentStatus === "PAID" ? "dark" : "neutral"}>{order.paymentStatus}</StatusPill>
                   <StatusPill tone={order.syncStatus === "SYNCED" ? "aqua" : order.syncStatus === "ERROR" ? "pink" : "neutral"}>{order.syncStatus.replaceAll("_", " ")}</StatusPill>
+                  <StatusPill tone={order.inventoryAdjustmentStatus === "SYNCED" ? "aqua" : order.inventoryAdjustmentStatus === "ERROR" ? "pink" : "neutral"}>Inventory {order.inventoryAdjustmentStatus.replaceAll("_", " ")}</StatusPill>
                 </div>
                 <p className="text-lg font-black">{formatMoney(order.totalCents)}</p>
               </summary>
@@ -49,6 +50,8 @@ export default async function AdminOrdersPage() {
                     <p>{[order.address1, order.city, order.state, order.postalCode].filter(Boolean).join(", ") || "No address on file"}</p>
                     {order.notes && <p className="mt-2">{order.notes}</p>}
                     {order.syncError && <p className="mt-2 font-bold text-boutique-pink">Square sync error: {order.syncError}</p>}
+                    {order.inventoryAdjustmentError && <p className="mt-2 font-bold text-boutique-pink">Inventory sync error: {order.inventoryAdjustmentError}</p>}
+                    {order.inventoryAdjustedAt && <p className="mt-2 text-xs font-bold text-aqua-700">Inventory adjusted {order.inventoryAdjustedAt.toLocaleString()}</p>}
                   </div>
                 </div>
                 <AdminForm action={saveOrder} submitLabel="Update order">

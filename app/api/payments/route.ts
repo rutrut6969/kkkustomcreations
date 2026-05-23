@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { FulfillmentType, OrderStatus, PaymentStatus } from "@prisma/client";
+import { FulfillmentType, OrderStatus, PaymentStatus, SquareSyncStatus } from "@prisma/client";
 import { createSquarePayment, parseDirectPaymentPayload } from "@/lib/square";
 import { hasDatabaseUrl, prisma } from "@/lib/prisma";
+import { adjustInventoryForPaidOrder } from "@/lib/inventory";
+import { setSquareSetting, writeSquareSyncLog } from "@/lib/square-sync";
 
 function orderNumber() {
   return `KK-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -68,8 +70,17 @@ export async function POST(request: Request) {
           }
         });
         localOrderId = order.id;
+        await setSquareSetting("squareLastSuccessfulCheckout", new Date().toLocaleString());
+        if (payment.status === "COMPLETED") {
+          try {
+            await adjustInventoryForPaidOrder(order.id, payment.id);
+          } catch (inventoryError) {
+            await writeSquareSyncLog("inventory.adjust", SquareSyncStatus.ERROR, inventoryError instanceof Error ? inventoryError.message : "Inventory adjustment failed after checkout.", { orderId: order.id, squarePaymentId: payment.id }).catch(() => undefined);
+          }
+        }
       } catch (orderError) {
         console.warn("Square payment succeeded but local order save failed:", orderError);
+        await writeSquareSyncLog("checkout.localOrder", SquareSyncStatus.ERROR, orderError instanceof Error ? orderError.message : "Square payment succeeded but local order save failed.", { squarePaymentId: payment.id }).catch(() => undefined);
       }
     }
 
