@@ -6,6 +6,19 @@ import { prisma, hasDatabaseUrl } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+async function getAdminInbox() {
+  if (!hasDatabaseUrl()) return [[], []] as const;
+  try {
+    return await Promise.all([
+      prisma.customOrderRequest.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
+      prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" }, take: 6 })
+    ]);
+  } catch (error) {
+    console.warn("Using empty admin inbox fallback:", error);
+    return [[], []] as const;
+  }
+}
+
 export default async function AdminPage() {
   const [settings, announcements, events, posts, products] = await Promise.all([
     getSettings(),
@@ -14,12 +27,7 @@ export default async function AdminPage() {
     getBlogPosts(true),
     getProducts()
   ]);
-  const inbox = hasDatabaseUrl()
-    ? await Promise.all([
-        prisma.customOrderRequest.findMany({ orderBy: { createdAt: "desc" }, take: 6 }),
-        prisma.contactMessage.findMany({ orderBy: { createdAt: "desc" }, take: 6 })
-      ])
-    : [[], []] as const;
+  const inbox = await getAdminInbox();
 
   return (
     <section className="container-page py-8">

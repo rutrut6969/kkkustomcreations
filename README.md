@@ -26,6 +26,14 @@ npm run prisma:migrate
 npm run db:seed
 ```
 
+On Vercel, the configured build command runs:
+
+```bash
+npm run prisma:deploy && npm run db:seed && npm run build
+```
+
+That applies checked-in migrations, seeds the Phase 1 sample content, then builds the site. Make sure `DATABASE_URL` is set in Vercel before redeploying.
+
 When `DATABASE_URL` is not configured, public pages use built-in sample data so the site still renders for demos. Admin persistence and inboxes require a database.
 
 ## Admin
