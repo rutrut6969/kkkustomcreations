@@ -1,6 +1,14 @@
 import Image from "next/image";
-import { archiveProduct, deleteProductImage, saveProduct } from "@/app/admin/actions";
+import {
+  archiveProduct,
+  archiveProductInSquareAction,
+  deleteProductImage,
+  pushProductToSquareAction,
+  saveProduct,
+  syncProductInventoryAction
+} from "@/app/admin/actions";
 import { AdminForm } from "@/components/admin-form";
+import { AdminActionForm } from "@/components/admin/admin-action-form";
 import { AdminCard, AdminPageHeader, StatusPill } from "@/components/admin/admin-ui";
 import { getAdminCategories, getAdminProducts } from "@/lib/admin-data";
 import { formatMoney } from "@/lib/format";
@@ -15,7 +23,7 @@ export default async function AdminProductsPage() {
 
   return (
     <div>
-      <AdminPageHeader title="Products" eyebrow="Catalog" description="Create, edit, archive, feature, and prepare items for future Square catalog sync." />
+      <AdminPageHeader title="Products" eyebrow="Catalog" description="Create, edit, feature, and sync products with Square Catalog and Inventory." />
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <AdminForm action={saveProduct} submitLabel="Create product">
           <h2 className="font-black">New product</h2>
@@ -63,14 +71,34 @@ export default async function AdminProductsPage() {
                   <div>
                     <p className="font-black">{product.name}</p>
                     <p className="text-sm text-boutique-charcoal/60">{product.category.name} · {formatMoney(product.salePriceCents ?? product.priceCents)} · stock {product.stock}</p>
+                    <p className="mt-1 text-xs font-bold text-boutique-charcoal/45">
+                      Square: {product.squareCatalogId ?? "not linked"} {product.lastSyncedAt ? `· synced ${product.lastSyncedAt.toLocaleString()}` : ""}
+                    </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {product.featured && <StatusPill tone="pink">Featured</StatusPill>}
                     <StatusPill tone={product.status === "ACTIVE" ? "aqua" : "neutral"}>{product.status}</StatusPill>
                     <StatusPill>{product.availability.replaceAll("_", " ")}</StatusPill>
+                    <StatusPill tone={product.syncStatus === "SYNCED" ? "aqua" : product.syncStatus === "ERROR" ? "pink" : "neutral"}>{product.syncStatus.replaceAll("_", " ")}</StatusPill>
                   </div>
                 </summary>
                 <div className="border-t border-pink-100 p-4">
+                  {product.syncError && (
+                    <p className="mb-4 rounded-xl bg-boutique-blush p-3 text-sm font-bold text-boutique-pink">
+                      Square sync error: {product.syncError}
+                    </p>
+                  )}
+                  <div className="mb-4 grid gap-3 rounded-2xl border border-aqua-100 bg-aqua-50/70 p-3 md:grid-cols-3">
+                    <AdminActionForm action={pushProductToSquareAction} label="Push to Square" tone="pink">
+                      <input type="hidden" name="id" value={product.id} />
+                    </AdminActionForm>
+                    <AdminActionForm action={syncProductInventoryAction} label="Sync inventory" tone="aqua">
+                      <input type="hidden" name="id" value={product.id} />
+                    </AdminActionForm>
+                    <AdminActionForm action={archiveProductInSquareAction} label="Archive in Square" tone="neutral">
+                      <input type="hidden" name="id" value={product.id} />
+                    </AdminActionForm>
+                  </div>
                   <AdminForm action={saveProduct} submitLabel="Save product">
                     <input type="hidden" name="id" value={product.id} />
                     <div className="grid gap-3 md:grid-cols-2">

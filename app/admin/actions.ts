@@ -8,6 +8,13 @@ import { CustomOrderStatus, OrderStatus, PaymentStatus } from "@prisma/client";
 import { verifyAdminCredentials } from "@/lib/admin-auth";
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
+import {
+  archiveProductInSquare,
+  importSquareOrders,
+  pullSquareCatalogIntoWebsite,
+  pushProductToSquare,
+  syncProductInventoryToSquare
+} from "@/lib/square-sync";
 
 export type AdminState = { ok?: boolean; message?: string };
 
@@ -385,4 +392,79 @@ export async function saveFeaturedProducts(formData: FormData) {
   revalidatePath("/");
   revalidatePath("/shop");
   revalidatePath("/admin");
+}
+
+export async function pullSquareCatalogAction(_state: AdminState, _formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  try {
+    const message = await pullSquareCatalogIntoWebsite();
+    revalidatePath("/shop");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/categories");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square catalog pull failed." };
+  }
+}
+
+export async function importSquareOrdersAction(_state: AdminState, _formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  try {
+    const message = await importSquareOrders();
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/integrations");
+    revalidatePath("/admin");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square order import failed." };
+  }
+}
+
+export async function pushProductToSquareAction(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Product id is required." };
+  try {
+    const message = await pushProductToSquare(id);
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square product sync failed." };
+  }
+}
+
+export async function syncProductInventoryAction(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Product id is required." };
+  try {
+    const message = await syncProductInventoryToSquare(id);
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square inventory sync failed." };
+  }
+}
+
+export async function archiveProductInSquareAction(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Product id is required." };
+  try {
+    const message = await archiveProductInSquare(id);
+    revalidatePath("/shop");
+    revalidatePath("/admin/products");
+    revalidatePath("/admin/integrations");
+    return { ok: true, message };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : "Square product archive failed." };
+  }
 }
