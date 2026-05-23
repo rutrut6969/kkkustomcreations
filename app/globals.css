@@ -60,3 +60,18 @@ textarea {
 .form-control {
   @apply focus-ring w-full rounded-xl border border-pink-100 bg-white px-4 py-3 text-base text-boutique-charcoal placeholder:text-boutique-charcoal/45;
 }
+
+@keyframes social-proof-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.social-proof-enter {
+  animation: social-proof-in 220ms ease-out both;
+}

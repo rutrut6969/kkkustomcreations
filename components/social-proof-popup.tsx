@@ -12,8 +12,10 @@ export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }
 
   useEffect(() => {
     if (!items.length) return;
+    let current = Math.floor(Math.random() * items.length);
     const show = () => {
-      setIndex(Math.floor(Math.random() * items.length));
+      current = (current + 1 + Math.floor(Math.random() * Math.max(1, items.length - 1))) % items.length;
+      setIndex(current);
       setVisible(true);
       window.setTimeout(() => setVisible(false), 6200);
     };
@@ -33,7 +35,7 @@ export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }
   return (
     <Link
       href={href}
-      className="fixed bottom-3 left-3 z-50 flex max-w-[calc(100vw-1.5rem)] cursor-pointer items-center gap-3 rounded-boutique border border-pink-100 bg-white p-3 pr-4 text-sm shadow-pink transition hover:-translate-y-1 hover:border-boutique-pink hover:shadow-soft focus-ring sm:bottom-6 sm:left-6 sm:max-w-sm"
+      className="social-proof-enter fixed bottom-3 left-3 z-50 flex max-w-[calc(100vw-1.5rem)] cursor-pointer items-center gap-3 rounded-boutique border border-pink-100 bg-white p-3 pr-4 text-sm shadow-pink transition hover:-translate-y-1 hover:border-boutique-pink hover:shadow-soft focus-ring sm:bottom-6 sm:left-6 sm:max-w-sm"
       title="View a similar product"
     >
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-aqua-100 text-boutique-pink">
