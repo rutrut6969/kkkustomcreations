@@ -69,6 +69,7 @@ enum SquareSyncStatus {
   SYNCED
   PENDING
   ERROR
+  SKIPPED
 }
 
 model Category {
@@ -111,6 +112,9 @@ model Product {
   lastSyncedAt    DateTime?
   syncStatus      SquareSyncStatus   @default(NOT_SYNCED)
   syncError       String?
+  inventorySyncedAt DateTime?
+  inventorySyncStatus SquareSyncStatus @default(NOT_SYNCED)
+  inventorySyncError String?
   categoryId      String
   category        Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   images          ProductImage[]
@@ -185,6 +189,11 @@ model Order {
   lastSyncedAt    DateTime?
   syncStatus      SquareSyncStatus @default(NOT_SYNCED)
   syncError       String?
+  inventoryAdjustedAt DateTime?
+  inventoryAdjustmentStatus SquareSyncStatus @default(NOT_SYNCED)
+  inventoryAdjustmentError String?
+  webhookProcessedAt DateTime?
+  idempotencyKey  String?         @unique
   address1        String?
   city            String?
   state           String?
