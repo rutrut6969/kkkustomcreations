@@ -4,6 +4,7 @@ import { createSquarePayment, parseDirectPaymentPayload } from "@/lib/square";
 import { hasDatabaseUrl, prisma } from "@/lib/prisma";
 import { adjustInventoryForPaidOrder } from "@/lib/inventory";
 import { setSquareSetting, writeSquareSyncLog } from "@/lib/square-sync";
+import { validateCheckoutInventory } from "@/lib/cart-validation";
 
 function orderNumber() {
   return `KK-${new Date().toISOString().slice(0, 10).replaceAll("-", "")}-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -18,6 +19,10 @@ export async function POST(request: Request) {
 
   if ((parsed.data.fulfillmentType === "SHIPPING" || parsed.data.fulfillmentType === "DROPOFF") && !parsed.data.address1) {
     return NextResponse.json({ error: "Address is required for shipping or local dropoff." }, { status: 400 });
+  }
+  const inventoryError = await validateCheckoutInventory(parsed.data.items);
+  if (inventoryError) {
+    return NextResponse.json({ error: inventoryError }, { status: 409 });
   }
 
   try {
