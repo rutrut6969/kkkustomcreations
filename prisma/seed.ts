@@ -59,6 +59,16 @@ async function main() {
       create: { key, value }
     });
   }
+  await prisma.siteSetting.upsert({
+    where: { key: "squareLastCatalogPull" },
+    update: {},
+    create: { key: "squareLastCatalogPull", value: "Not synced yet" }
+  });
+  await prisma.siteSetting.upsert({
+    where: { key: "squareLastOrderImport" },
+    update: {},
+    create: { key: "squareLastOrderImport", value: "Not synced yet" }
+  });
 
   for (const announcement of sampleAnnouncements) {
     await prisma.announcement.upsert({
@@ -179,6 +189,21 @@ async function main() {
       create: { id: `media-${product.id}`, fileName: product.name, url: product.imageUrl, altText: product.name, assetType: "IMAGE", mimeType: "image/jpeg" }
     });
   }
+
+  await prisma.squareSyncLog.upsert({
+    where: { id: "demo-square-sync-log" },
+    update: {
+      action: "phase2.ready",
+      status: "NOT_SYNCED",
+      message: "Square Phase 2 sync tools are ready for sandbox testing."
+    },
+    create: {
+      id: "demo-square-sync-log",
+      action: "phase2.ready",
+      status: "NOT_SYNCED",
+      message: "Square Phase 2 sync tools are ready for sandbox testing."
+    }
+  });
 }
 
 main()

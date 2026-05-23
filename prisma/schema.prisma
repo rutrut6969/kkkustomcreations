@@ -64,6 +64,13 @@ enum MediaAssetType {
   OTHER
 }
 
+enum SquareSyncStatus {
+  NOT_SYNCED
+  SYNCED
+  PENDING
+  ERROR
+}
+
 model Category {
   id             String    @id @default(cuid())
   name           String    @unique
@@ -72,6 +79,12 @@ model Category {
   bannerImageUrl String?
   visible        Boolean   @default(true)
   sortOrder      Int       @default(0)
+  squareCatalogId String?   @unique
+  squareVersion  String?
+  squareUpdatedAt DateTime?
+  lastSyncedAt   DateTime?
+  syncStatus     SquareSyncStatus @default(NOT_SYNCED)
+  syncError      String?
   products       Product[]
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -92,7 +105,12 @@ model Product {
   featured        Boolean            @default(false)
   madeToOrder     Boolean            @default(false)
   tags            String[]           @default([])
-  squareCatalogId String?
+  squareCatalogId String?            @unique
+  squareVersion   String?
+  squareUpdatedAt DateTime?
+  lastSyncedAt    DateTime?
+  syncStatus      SquareSyncStatus   @default(NOT_SYNCED)
+  syncError       String?
   categoryId      String
   category        Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   images          ProductImage[]
@@ -122,6 +140,11 @@ model ProductVariant {
   priceDeltaCents Int   @default(0)
   stock       Int?
   sku         String?
+  squareCatalogId String? @unique
+  squareVersion String?
+  lastSyncedAt DateTime?
+  syncStatus SquareSyncStatus @default(NOT_SYNCED)
+  syncError String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -157,6 +180,11 @@ model Order {
   internalNotes   String?
   squareOrderId   String?
   squarePaymentId String?
+  squareVersion   String?
+  squareUpdatedAt DateTime?
+  lastSyncedAt    DateTime?
+  syncStatus      SquareSyncStatus @default(NOT_SYNCED)
+  syncError       String?
   address1        String?
   city            String?
   state           String?
@@ -275,4 +303,13 @@ model MediaAsset {
   sizeBytes   Int?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
+}
+
+model SquareSyncLog {
+  id        String           @id @default(cuid())
+  action    String
+  status    SquareSyncStatus
+  message   String?
+  metadata  Json?
+  createdAt DateTime         @default(now())
 }
