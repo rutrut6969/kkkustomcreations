@@ -278,7 +278,7 @@ export function CartPage() {
             className="focus-ring inline-flex items-center justify-center gap-2 rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink aria-disabled:pointer-events-none aria-disabled:opacity-50"
           >
             <CreditCard size={18} aria-hidden="true" />
-            Pay on this site
+            Pay Now!
           </Link>
           {/*          <button disabled={loading || items.length === 0} className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-pink-100 bg-white px-5 py-3 font-black text-boutique-charcoal shadow-soft disabled:cursor-not-allowed disabled:opacity-50">
             <ExternalLink size={18} aria-hidden="true" />
