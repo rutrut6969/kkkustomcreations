@@ -2,12 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { Search } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import type { CategoryView, ProductView } from "@/lib/types";
 import { ProductCard } from "@/components/product-card";
 
 export function ShopBrowser({ products, categories }: { products: ProductView[]; categories: CategoryView[] }) {
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [category, setCategory] = useState("all");
+  const [category, setCategory] = useState(() => {
+    const requested = searchParams.get("category");
+    return categories.some((item) => item.slug === requested) ? requested ?? "all" : "all";
+  });
 
   const filtered = useMemo(() => {
     return products.filter((product) => {
@@ -32,9 +37,10 @@ export function ShopBrowser({ products, categories }: { products: ProductView[];
             />
           </label>
           <select
+            aria-label="Filter products by category"
             value={category}
             onChange={(event) => setCategory(event.target.value)}
-            className="focus-ring rounded-full border border-pink-100 bg-white px-4 py-3 font-bold"
+            className="focus-ring w-full rounded-full border border-pink-100 bg-white px-4 py-3 font-bold md:w-auto"
           >
             <option value="all">All categories</option>
             {categories.map((item) => (

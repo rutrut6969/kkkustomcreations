@@ -11,8 +11,14 @@ export default function AdminLoginPage({ searchParams }: { searchParams: { next?
         </div>
         <AdminForm action={loginAdmin} submitLabel="Log in">
           <input type="hidden" name="next" value={searchParams.next ?? "/admin"} />
-          <input name="email" type="email" required placeholder="Admin email" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="password" type="password" required placeholder="Password" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <label className="form-label">
+            Admin email
+            <input name="email" type="email" required autoComplete="username" placeholder="admin@example.com" className="form-control" />
+          </label>
+          <label className="form-label">
+            Password
+            <input name="password" type="password" required autoComplete="current-password" placeholder="Password" className="form-control" />
+          </label>
         </AdminForm>
       </div>
     </section>

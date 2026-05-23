@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function AdminPage() {
   const [settings, announcements, events, posts, products] = await Promise.all([
     getSettings(),
-    getAnnouncements(),
+    getAnnouncements(true),
     getEvents(),
     getBlogPosts(true),
     getProducts()
@@ -42,18 +42,18 @@ export default async function AdminPage() {
       <div className="grid gap-6 xl:grid-cols-2">
         <AdminForm action={saveSettings} submitLabel="Save business settings">
           <h2 className="text-2xl font-black">Business and homepage settings</h2>
-          <input name="businessName" defaultValue={settings.businessName} placeholder="Business name" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="homepageBannerText" defaultValue={settings.homepageBannerText} placeholder="Homepage banner text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <textarea name="businessInfo" defaultValue={settings.businessInfo} rows={4} placeholder="Business info" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Business name" name="businessName" defaultValue={settings.businessName} placeholder="Business name" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Homepage banner text" name="homepageBannerText" defaultValue={settings.homepageBannerText} placeholder="Homepage banner text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <textarea aria-label="Business info" name="businessInfo" defaultValue={settings.businessInfo} rows={4} placeholder="Business info" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
           <div className="grid gap-3 sm:grid-cols-2">
-            <input name="contactEmail" defaultValue={settings.contactEmail} placeholder="Contact email" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-            <input name="contactPhone" defaultValue={settings.contactPhone} placeholder="Contact phone" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+            <input aria-label="Contact email" name="contactEmail" defaultValue={settings.contactEmail} placeholder="Contact email" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+            <input aria-label="Contact phone" name="contactPhone" defaultValue={settings.contactPhone} placeholder="Contact phone" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
           </div>
-          <input name="facebookUrl" defaultValue={settings.facebookUrl} placeholder="Facebook link" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="facebookEmbedUrl" defaultValue={settings.facebookEmbedUrl} placeholder="Facebook embed URL" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <textarea name="shippingText" defaultValue={settings.shippingText} rows={2} placeholder="Shipping text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <textarea name="pickupText" defaultValue={settings.pickupText} rows={2} placeholder="Pickup text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <textarea name="dropoffText" defaultValue={settings.dropoffText} rows={2} placeholder="Dropoff text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Facebook link" name="facebookUrl" defaultValue={settings.facebookUrl} placeholder="Facebook link" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Facebook embed URL" name="facebookEmbedUrl" defaultValue={settings.facebookEmbedUrl} placeholder="Facebook embed URL" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <textarea aria-label="Shipping text" name="shippingText" defaultValue={settings.shippingText} rows={2} placeholder="Shipping text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <textarea aria-label="Pickup text" name="pickupText" defaultValue={settings.pickupText} rows={2} placeholder="Pickup text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <textarea aria-label="Dropoff text" name="dropoffText" defaultValue={settings.dropoffText} rows={2} placeholder="Dropoff text" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
           <label className="flex gap-3 text-sm font-bold">
             <input name="customOrdersEnabled" type="checkbox" defaultChecked={settings.customOrdersEnabled !== "false"} value="true" className="h-4 w-4 accent-boutique-pink" />
             Custom orders visible/open
@@ -63,8 +63,8 @@ export default async function AdminPage() {
         <div className="space-y-6">
           <AdminForm action={saveAnnouncement} submitLabel="Save announcement">
             <h2 className="text-2xl font-black">Homepage announcements</h2>
-            <input name="title" placeholder="Announcement title" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-            <textarea name="body" rows={3} placeholder="Announcement body" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+            <input aria-label="Announcement title" name="title" placeholder="Announcement title" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+            <textarea aria-label="Announcement body" name="body" rows={3} placeholder="Announcement body" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
             <label className="flex gap-3 text-sm font-bold"><input name="active" type="checkbox" defaultChecked className="h-4 w-4 accent-boutique-pink" /> Active</label>
           </AdminForm>
           <div className="rounded-boutique border border-pink-100 bg-white p-5 shadow-soft">
@@ -74,8 +74,8 @@ export default async function AdminPage() {
                 <div key={item.id} className="rounded-xl bg-boutique-blush p-3">
                   <AdminForm action={saveAnnouncement} submitLabel="Update">
                     <input type="hidden" name="id" value={item.id} />
-                    <input name="title" defaultValue={item.title} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                    <textarea name="body" defaultValue={item.body} rows={2} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                    <input aria-label="Announcement title" name="title" defaultValue={item.title} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                    <textarea aria-label="Announcement body" name="body" defaultValue={item.body} rows={2} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
                     <label className="flex gap-3 text-sm font-bold"><input name="active" type="checkbox" defaultChecked={item.active} className="h-4 w-4 accent-boutique-pink" /> Active</label>
                   </AdminForm>
                   <form action={deleteAnnouncement} className="mt-2">
@@ -90,14 +90,14 @@ export default async function AdminPage() {
 
         <AdminForm action={saveEvent} submitLabel="Save event">
           <h2 className="text-2xl font-black">Vendor events</h2>
-          <input name="title" placeholder="Event title" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Event title" name="title" placeholder="Event title" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
           <div className="grid gap-3 sm:grid-cols-2">
-            <input name="date" type="date" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-            <input name="time" placeholder="Time" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+            <input aria-label="Event date" name="date" type="date" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+            <input aria-label="Event time" name="time" placeholder="Time" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
           </div>
-          <input name="location" placeholder="Location" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <textarea name="description" rows={3} placeholder="Description" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="facebookEventLink" placeholder="Facebook event link" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Event location" name="location" placeholder="Location" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <textarea aria-label="Event description" name="description" rows={3} placeholder="Description" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Facebook event link" name="facebookEventLink" placeholder="Facebook event link" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
           <label className="flex gap-3 text-sm font-bold"><input name="featured" type="checkbox" className="h-4 w-4 accent-boutique-pink" /> Featured event</label>
         </AdminForm>
 
@@ -108,14 +108,14 @@ export default async function AdminPage() {
               <div key={event.id} className="rounded-xl bg-aqua-50 p-3">
                 <AdminForm action={saveEvent} submitLabel="Update">
                   <input type="hidden" name="id" value={event.id} />
-                  <input name="title" defaultValue={event.title} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Event title" name="title" defaultValue={event.title} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <input name="date" type="date" defaultValue={event.date.toISOString().slice(0, 10)} className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-                    <input name="time" defaultValue={event.time} className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+                    <input aria-label="Event date" name="date" type="date" defaultValue={event.date.toISOString().slice(0, 10)} className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+                    <input aria-label="Event time" name="time" defaultValue={event.time} className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
                   </div>
-                  <input name="location" defaultValue={event.location} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <textarea name="description" defaultValue={event.description} rows={2} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <input name="facebookEventLink" defaultValue={event.facebookEventLink ?? ""} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Event location" name="location" defaultValue={event.location} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <textarea aria-label="Event description" name="description" defaultValue={event.description} rows={2} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Facebook event link" name="facebookEventLink" defaultValue={event.facebookEventLink ?? ""} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
                   <label className="flex gap-3 text-sm font-bold"><input name="featured" type="checkbox" defaultChecked={event.featured} className="h-4 w-4 accent-boutique-pink" /> Featured event</label>
                 </AdminForm>
                 <form action={deleteEvent} className="mt-2">
@@ -129,13 +129,13 @@ export default async function AdminPage() {
 
         <AdminForm action={savePost} submitLabel="Save blog post">
           <h2 className="text-2xl font-black">Blog/update posts</h2>
-          <input name="title" placeholder="Title" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="slug" placeholder="Slug, optional" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="excerpt" placeholder="Short excerpt" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <textarea name="body" rows={6} placeholder="Body" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="publishedDate" type="date" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="featuredImage" placeholder="Featured image placeholder URL" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-          <select name="status" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3">
+          <input aria-label="Post title" name="title" placeholder="Title" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Post slug" name="slug" placeholder="Slug, optional" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Post excerpt" name="excerpt" placeholder="Short excerpt" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <textarea aria-label="Post body" name="body" rows={6} placeholder="Body" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Post published date" name="publishedDate" type="date" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <input aria-label="Featured image URL" name="featuredImage" placeholder="Featured image placeholder URL" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+          <select aria-label="Post status" name="status" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3">
             <option value="PUBLISHED">Published</option>
             <option value="DRAFT">Draft</option>
           </select>
@@ -148,13 +148,13 @@ export default async function AdminPage() {
               <div key={post.id} className="rounded-xl bg-boutique-blush p-3">
                 <AdminForm action={savePost} submitLabel="Update">
                   <input type="hidden" name="id" value={post.id} />
-                  <input name="title" defaultValue={post.title} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <input name="slug" defaultValue={post.slug} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <input name="excerpt" defaultValue={post.excerpt} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <textarea name="body" defaultValue={post.body} rows={4} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <input name="publishedDate" type="date" defaultValue={post.publishedDate.toISOString().slice(0, 10)} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <input name="featuredImage" defaultValue={post.featuredImage ?? ""} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-                  <select name="status" defaultValue={post.status} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3">
+                  <input aria-label="Post title" name="title" defaultValue={post.title} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Post slug" name="slug" defaultValue={post.slug} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Post excerpt" name="excerpt" defaultValue={post.excerpt} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <textarea aria-label="Post body" name="body" defaultValue={post.body} rows={4} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Post published date" name="publishedDate" type="date" defaultValue={post.publishedDate.toISOString().slice(0, 10)} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <input aria-label="Featured image URL" name="featuredImage" defaultValue={post.featuredImage ?? ""} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+                  <select aria-label="Post status" name="status" defaultValue={post.status} className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3">
                     <option value="PUBLISHED">Published</option>
                     <option value="DRAFT">Draft</option>
                   </select>

@@ -10,6 +10,12 @@
   box-sizing: border-box;
 }
 
+*,
+*::before,
+*::after {
+  min-width: 0;
+}
+
 html {
   scroll-behavior: smooth;
   overflow-x: hidden;
@@ -45,4 +51,12 @@ textarea {
 
 .focus-ring {
   @apply focus:outline-none focus:ring-4 focus:ring-aqua-100 focus:ring-offset-2;
+}
+
+.form-label {
+  @apply grid gap-1 text-sm font-bold text-boutique-charcoal;
+}
+
+.form-control {
+  @apply focus-ring w-full rounded-xl border border-pink-100 bg-white px-4 py-3 text-base text-boutique-charcoal placeholder:text-boutique-charcoal/45;
 }

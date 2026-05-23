@@ -25,22 +25,40 @@ export default async function CustomOrdersPage() {
       </div>
       <ManagedForm action={submitCustomOrder} submitLabel="Submit custom request">
         <div className="grid gap-4 sm:grid-cols-2">
-          <input name="name" required placeholder="Name" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="email" type="email" required placeholder="Email" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="phone" required placeholder="Phone" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-          <select name="itemType" required className="focus-ring rounded-xl border border-pink-100 px-4 py-3">
-            <option value="">Item type</option>
-            <option>Tumbler</option>
-            <option>Pen</option>
-            <option>Keychain</option>
-            <option>Badge Reel</option>
-            <option>Wristlet</option>
-            <option>Seasonal</option>
-            <option>Other Custom Product</option>
-          </select>
+          <label className="form-label">
+            Name
+            <input name="name" required autoComplete="name" placeholder="Jane Smith" className="form-control" />
+          </label>
+          <label className="form-label">
+            Email
+            <input name="email" type="email" required autoComplete="email" placeholder="jane@example.com" className="form-control" />
+          </label>
+          <label className="form-label">
+            Phone
+            <input name="phone" required autoComplete="tel" placeholder="555-123-4567" className="form-control" />
+          </label>
+          <label className="form-label">
+            Item type
+            <select name="itemType" required className="form-control">
+              <option value="">Choose an item type</option>
+              <option>Tumbler</option>
+              <option>Pen</option>
+              <option>Keychain</option>
+              <option>Badge Reel</option>
+              <option>Wristlet</option>
+              <option>Seasonal</option>
+              <option>Other Custom Product</option>
+            </select>
+          </label>
         </div>
-        <textarea name="designRequest" required rows={6} placeholder="Design request, colors, theme, name, and any must-have details" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
-        <input name="neededBy" type="date" className="focus-ring w-full rounded-xl border border-pink-100 px-4 py-3" />
+        <label className="form-label">
+          Design request
+          <textarea name="designRequest" required rows={6} placeholder="Colors, theme, name, and any must-have details" className="form-control" />
+        </label>
+        <label className="form-label">
+          Needed-by date
+          <input name="neededBy" type="date" className="form-control" />
+        </label>
         <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-aqua-300 bg-aqua-50 px-4 py-4 text-sm font-bold">
           <Upload size={18} className="text-boutique-pink" />
           <span>Image upload placeholder: mention inspiration images here for Phase 1</span>

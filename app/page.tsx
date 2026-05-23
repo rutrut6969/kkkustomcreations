@@ -22,9 +22,14 @@ export default async function HomePage() {
       <section className="container-page grid gap-8 py-8 md:grid-cols-[1.05fr_0.95fr] md:items-center md:py-14">
         <div className="min-w-0 space-y-6">
           {announcements[0] && (
-            <div className="inline-flex max-w-full items-center gap-2 rounded-full border border-pink-100 bg-white px-4 py-2 text-sm font-bold shadow-soft">
-              <Sparkles size={16} className="text-boutique-pink" />
-              <span className="truncate">{announcements[0].title}: {announcements[0].body}</span>
+            <div className="max-w-full rounded-2xl border border-pink-100 bg-white px-4 py-3 text-sm font-bold leading-6 shadow-soft sm:rounded-full">
+              <div className="flex min-w-0 items-start gap-2">
+                <Sparkles size={16} className="mt-1 shrink-0 text-boutique-pink" aria-hidden="true" />
+                <p className="min-w-0">
+                  <span className="font-black text-boutique-pink">{announcements[0].title}:</span>{" "}
+                  {announcements[0].body}
+                </p>
+              </div>
             </div>
           )}
           <div className="space-y-4">

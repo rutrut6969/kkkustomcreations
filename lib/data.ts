@@ -19,14 +19,14 @@ export async function getSettings() {
     return settings.reduce<Record<string, string>>((acc, setting) => {
       acc[setting.key] = setting.value;
       return acc;
-    }, {});
+    }, { ...sampleSettings });
   }, sampleSettings);
 }
 
-export async function getAnnouncements() {
+export async function getAnnouncements(includeInactive = false) {
   return fromDb(
-    () => prisma.announcement.findMany({ where: { active: true }, orderBy: { createdAt: "desc" } }),
-    sampleAnnouncements
+    () => prisma.announcement.findMany({ where: includeInactive ? undefined : { active: true }, orderBy: { createdAt: "desc" } }),
+    includeInactive ? sampleAnnouncements : sampleAnnouncements.filter((announcement) => announcement.active)
   );
 }
 
@@ -94,7 +94,7 @@ export async function getSocialProofPurchases() {
   return fromDb(
     async () => {
       const purchases = await prisma.socialProofPurchase.findMany({
-        include: { product: true },
+        include: { product: { include: { category: true } } },
         orderBy: { createdAt: "desc" },
         take: 12
       });
@@ -103,7 +103,7 @@ export async function getSocialProofPurchases() {
         customerName: purchase.customerName,
         productName: purchase.productName,
         productSlug: purchase.product?.availability === "OUT_OF_STOCK" ? undefined : purchase.product?.slug,
-        fallbackUrl: purchase.product?.availability === "OUT_OF_STOCK" ? `/shop?category=${purchase.product.categoryId}` : purchase.fallbackUrl,
+        fallbackUrl: purchase.product?.availability === "OUT_OF_STOCK" ? `/shop?category=${purchase.product.category.slug}` : purchase.fallbackUrl,
         isSample: purchase.isSample
       }));
     },

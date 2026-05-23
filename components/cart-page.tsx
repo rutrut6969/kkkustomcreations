@@ -95,21 +95,48 @@ export function CartPage() {
           <span className="text-xl font-black">{formatMoney(subtotal)}</span>
         </div>
         <div className="mt-5 grid gap-3">
-          <select name="fulfillmentType" required className="focus-ring rounded-xl border border-pink-100 px-4 py-3">
-            <option value="SHIPPING">Shipping</option>
-            <option value="PICKUP">Local pickup</option>
-            <option value="DROPOFF">Local dropoff</option>
-          </select>
-          <input name="name" required placeholder="Name" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="email" type="email" required placeholder="Email" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="phone" required placeholder="Phone" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-          <input name="address1" placeholder="Address for shipping/dropoff" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+          <label className="form-label">
+            Fulfillment
+            <select name="fulfillmentType" required className="form-control">
+              <option value="SHIPPING">Shipping</option>
+              <option value="PICKUP">Local pickup</option>
+              <option value="DROPOFF">Local dropoff</option>
+            </select>
+          </label>
+          <label className="form-label">
+            Name
+            <input name="name" required autoComplete="name" placeholder="Jane Smith" className="form-control" />
+          </label>
+          <label className="form-label">
+            Email
+            <input name="email" type="email" required autoComplete="email" placeholder="jane@example.com" className="form-control" />
+          </label>
+          <label className="form-label">
+            Phone
+            <input name="phone" required autoComplete="tel" placeholder="555-123-4567" className="form-control" />
+          </label>
+          <label className="form-label">
+            Address for shipping/dropoff
+            <input name="address1" autoComplete="street-address" placeholder="Street address" className="form-control" />
+          </label>
           <div className="grid gap-3 sm:grid-cols-3">
-            <input name="city" placeholder="City" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-            <input name="state" placeholder="State" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
-            <input name="postalCode" placeholder="ZIP" className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+            <label className="form-label">
+              City
+              <input name="city" autoComplete="address-level2" placeholder="City" className="form-control" />
+            </label>
+            <label className="form-label">
+              State
+              <input name="state" autoComplete="address-level1" placeholder="State" className="form-control" />
+            </label>
+            <label className="form-label">
+              ZIP
+              <input name="postalCode" autoComplete="postal-code" placeholder="ZIP" className="form-control" />
+            </label>
           </div>
-          <textarea name="notes" placeholder="Notes or customization details" rows={4} className="focus-ring rounded-xl border border-pink-100 px-4 py-3" />
+          <label className="form-label">
+            Notes or customization details
+            <textarea name="notes" rows={4} placeholder="Colors, name, pickup notes, or timing details" className="form-control" />
+          </label>
           <label className="flex gap-3 text-sm leading-6">
             <input name="consent" type="checkbox" required className="mt-1 h-4 w-4 accent-boutique-pink" />
             <span>I consent to K&K Kustom Kreations contacting me about my order, custom request, pickup/dropoff, and related business updates.</span>

@@ -160,5 +160,6 @@ export const sampleSocialProof: SocialProofView[] = [
   { id: "proof-1", customerName: "Jose", productName: "Custom Glitter Tumbler", productSlug: "custom-glitter-tumbler", isSample: true },
   { id: "proof-2", customerName: "Amanda", productName: "Floral Beaded Pen", productSlug: "floral-beaded-pen", isSample: true },
   { id: "proof-3", customerName: "Taylor", productName: "Nurse Badge Reel", productSlug: "nurse-badge-reel", isSample: true },
-  { id: "proof-4", customerName: "Morgan", productName: "Aqua Pink Wristlet", productSlug: "aqua-pink-wristlet", isSample: true }
+  { id: "proof-4", customerName: "Morgan", productName: "Aqua Pink Wristlet", productSlug: "aqua-pink-wristlet", isSample: true },
+  { id: "proof-5", customerName: "Riley", productName: "Seasonal Acrylic Keychain", fallbackUrl: "/shop?category=seasonal", isSample: true }
 ];
