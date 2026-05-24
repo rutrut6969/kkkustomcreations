@@ -16,13 +16,17 @@ export default async function AdminDashboardPage() {
         description="A compact snapshot of products, orders, custom work, messages, and upcoming events."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
-        <StatCard label="Products" value={metrics.totalProducts} hint="Catalog items" />
-        <StatCard label="Orders" value={metrics.recentOrders} hint="All-time tracked" />
-        <StatCard label="Custom Requests" value={metrics.pendingCustomRequests} hint="Needs attention" />
-        <StatCard label="Upcoming Events" value={metrics.upcomingEvents} hint="Vendor calendar" />
-        <StatCard label="Messages" value={metrics.recentMessages} hint="Customer inbox" />
-        <StatCard label="Featured" value={metrics.featuredProducts} hint="Homepage products" />
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <StatCard label="Active products" value={metrics.activeProducts} hint={`${metrics.draftProducts} draft · ${metrics.archivedProducts} archived`} href="/admin/products" />
+        <StatCard label="Paid orders" value={metrics.paidOrders} hint={`${metrics.pendingOrders} pending`} href="/admin/orders?filter=paid" />
+        <StatCard label="Customers" value={metrics.customers} hint={`${metrics.marketingOptIns} marketing opt-ins`} href="/admin/customers" />
+        <StatCard label="Low stock" value={metrics.lowStockItems} hint="Needs attention" href="/admin/products?filter=out-of-stock" />
+        <StatCard label="Messages" value={metrics.unreadMessages} hint="Customer inbox" href="/admin/messages" />
+        <StatCard label="Custom requests" value={metrics.pendingCustomRequests} hint="Needs attention" href="/admin/custom-orders" />
+        <StatCard label="Upcoming events" value={metrics.upcomingEvents} hint="Vendor calendar" href="/admin/events" />
+        <StatCard label="Featured products" value={metrics.featuredProducts} hint="Homepage products" href="/admin/homepage" />
+        <StatCard label="All products" value={metrics.totalProducts} hint="Including non-archived" href="/admin/products" />
+        <StatCard label="All orders" value={metrics.recentOrders} hint="Tracked locally" href="/admin/orders" />
       </div>
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">

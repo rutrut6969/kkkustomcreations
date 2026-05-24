@@ -165,6 +165,11 @@ model Customer {
   city      String?
   state     String?
   postalCode String?
+  country   String?  @default("US")
+  marketingConsent Boolean @default(false)
+  orderConsent     Boolean @default(false)
+  lastOrderAt      DateTime?
+  totalSpentCents  Int     @default(0)
   orders    Order[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

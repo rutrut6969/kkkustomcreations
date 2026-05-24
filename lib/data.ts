@@ -106,13 +106,14 @@ export async function getBlogPostBySlug(slug: string) {
 }
 
 export async function getSocialProofPurchases() {
-  return fromDb(
-    async () => {
-      const purchases = await prisma.socialProofPurchase.findMany({
-        include: { product: { include: { category: true } } },
-        orderBy: { createdAt: "desc" },
-        take: 12
-      });
+  if (!hasDatabaseUrl()) return [];
+  try {
+    const purchases = await prisma.socialProofPurchase.findMany({
+      include: { product: { include: { category: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 12
+    });
+    if (purchases.length) {
       return purchases.map((purchase) => ({
         id: purchase.id,
         customerName: purchase.customerName,
@@ -121,7 +122,29 @@ export async function getSocialProofPurchases() {
         fallbackUrl: purchase.product?.availability === "OUT_OF_STOCK" ? `/shop?category=${purchase.product.category.slug}` : purchase.fallbackUrl,
         isSample: purchase.isSample
       }));
-    },
-    [] as SocialProofView[]
-  );
+    }
+
+    const activeProducts = await prisma.product.findMany({
+      where: {
+        status: "ACTIVE",
+        deletedAt: null,
+        availability: { in: ["IN_STOCK", "LOW_STOCK", "MADE_TO_ORDER"] }
+      },
+      include: { category: true },
+      orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
+      take: 8
+    });
+    const names = ["Avery", "Morgan", "Taylor", "Jordan", "Riley", "Casey", "Jamie", "Alex"];
+    return activeProducts.map((product, index) => ({
+      id: `generated-${product.id}`,
+      customerName: names[index % names.length],
+      productName: product.name,
+      productSlug: product.slug,
+      fallbackUrl: `/shop?category=${product.category.slug}`,
+      isSample: true
+    }));
+  } catch (error) {
+    console.warn("Database query failed; returning empty social proof:", error);
+    return [] as SocialProofView[];
+  }
 }

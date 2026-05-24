@@ -500,6 +500,7 @@ export function SquareCheckoutPage() {
 
       <aside className="h-fit rounded-boutique border border-pink-100 bg-white p-5 shadow-pink">
         <h2 className="text-2xl font-black">Payment</h2>
+        <p className="mt-1 text-sm font-bold text-boutique-charcoal/60">Pay securely by card or Afterpay/Clearpay when available.</p>
         <div className="mt-4 space-y-3">
           {items.map((item) => (
             <div key={item.productId} className="grid grid-cols-[52px_1fr_auto] items-center gap-3">

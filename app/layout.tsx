@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import { getSettings, getSocialProofPurchases } from "@/lib/data";
 import { PublicChrome } from "@/components/public-chrome";
@@ -22,6 +23,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="min-h-screen">
           <PublicChrome settings={settings} socialProof={socialProof}>{children}</PublicChrome>
         </div>
+        <Analytics />
       </body>
     </html>
   );

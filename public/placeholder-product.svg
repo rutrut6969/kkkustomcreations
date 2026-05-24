@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900" role="img" aria-label="K&amp;K Kustom Kreations product image placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#c7f7f3"/>
+      <stop offset="0.55" stop-color="#fff"/>
+      <stop offset="1" stop-color="#ffd7ea"/>
+    </linearGradient>
+  </defs>
+  <rect width="900" height="900" rx="72" fill="url(#bg)"/>
+  <circle cx="450" cy="360" r="150" fill="#fff" opacity=".82"/>
+  <path d="M330 515h240l52 120H278l52-120Z" fill="#ff5fa2" opacity=".82"/>
+  <path d="M368 288h164v220H368z" fill="#1fbfc7" opacity=".85"/>
+  <path d="M390 318h120" stroke="#fff" stroke-width="26" stroke-linecap="round" opacity=".9"/>
+  <text x="450" y="720" fill="#333" font-family="Arial, sans-serif" font-size="54" font-weight="800" text-anchor="middle">K&amp;K</text>
+  <text x="450" y="780" fill="#555" font-family="Arial, sans-serif" font-size="28" font-weight="700" text-anchor="middle">Product image coming soon</text>
+</svg>

@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import Link from "next/link";
 
 export function AdminPageHeader({
   title,
@@ -27,12 +28,17 @@ export function AdminCard({ children, className }: { children: React.ReactNode; 
   return <div className={clsx("min-w-0 overflow-hidden rounded-2xl border border-pink-100 bg-white p-4 shadow-sm", className)}>{children}</div>;
 }
 
-export function StatCard({ label, value, hint }: { label: string; value: string | number; hint?: string }) {
-  return (
-    <AdminCard>
+export function StatCard({ label, value, hint, href }: { label: string; value: string | number; hint?: string; href?: string }) {
+  const content = (
+    <>
       <p className="text-xs font-black uppercase tracking-[0.14em] text-boutique-charcoal/50">{label}</p>
       <p className="mt-2 text-3xl font-black">{value}</p>
       {hint && <p className="mt-1 text-xs font-bold text-aqua-700">{hint}</p>}
+    </>
+  );
+  return (
+    <AdminCard className={href ? "transition hover:-translate-y-0.5 hover:border-aqua-200 hover:shadow-soft" : undefined}>
+      {href ? <Link href={href} className="block focus:outline-none">{content}</Link> : content}
     </AdminCard>
   );
 }

@@ -32,17 +32,31 @@ export async function POST(request: Request) {
 
     if (hasDatabaseUrl()) {
       try {
-        const customer = await prisma.customer.create({
-          data: {
-            name: parsed.data.name,
-            email: parsed.data.email,
-            phone: parsed.data.phone,
-            address1: parsed.data.address1 || null,
-            city: parsed.data.city || null,
-            state: parsed.data.state || null,
-            postalCode: parsed.data.postalCode || null
-          }
+        const customerModel = prisma.customer as any;
+        const existingCustomer = await customerModel.findFirst({
+          where: { OR: [{ email: parsed.data.email }, { phone: parsed.data.phone }] }
         });
+        const customerData = {
+          name: parsed.data.name,
+          email: parsed.data.email,
+          phone: parsed.data.phone,
+          address1: parsed.data.address1 || null,
+          city: parsed.data.city || null,
+          state: parsed.data.state || null,
+          postalCode: parsed.data.postalCode || null,
+          country: "US",
+          marketingConsent: parsed.data.marketingConsent || existingCustomer?.marketingConsent || false,
+          orderConsent: parsed.data.consent || existingCustomer?.orderConsent || false,
+          lastOrderAt: new Date()
+        };
+        const customer = existingCustomer
+          ? await customerModel.update({
+              where: { id: existingCustomer.id },
+              data: { ...customerData, totalSpentCents: { increment: totalCents } }
+            })
+          : await customerModel.create({
+              data: { ...customerData, totalSpentCents: totalCents }
+            });
         const order = await prisma.order.create({
           data: {
             orderNumber: orderNumber(),

@@ -25,55 +25,132 @@ const filters = [
   ["active", "Active"],
   ["draft", "Draft"],
   ["archived", "Archived"],
+  ["low-stock", "Low Stock"],
   ["out-of-stock", "Out of Stock"],
   ["synced", "Synced"],
   ["not-synced", "Not Synced"]
 ];
 
+function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
+  return (
+    <label className={`form-label ${className ?? ""}`}>
+      <span>{label}</span>
+      {children}
+    </label>
+  );
+}
+
+function ProductSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-2xl border border-pink-100 bg-white p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-black uppercase tracking-[0.14em] text-aqua-700">{title}</h3>
+      <div className="grid gap-3">{children}</div>
+    </section>
+  );
+}
+
 function ProductFields({ categories, product }: { categories: Awaited<ReturnType<typeof getAdminCategories>>; product?: any }) {
   return (
     <>
       {product && <input type="hidden" name="id" value={product.id} />}
-      <div className="grid gap-3 lg:grid-cols-2">
-        <input aria-label="Product name" name="name" defaultValue={product?.name ?? ""} placeholder="Product name" className="form-control" />
-        <input aria-label="Product slug" name="slug" defaultValue={product?.slug ?? ""} placeholder="Slug optional" className="form-control" />
-        <select aria-label="Category" name="categoryId" className="form-control" defaultValue={product?.categoryId ?? ""} required>
-          <option value="">Choose category</option>
-          {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-        </select>
-        <input aria-label="Price" name="price" defaultValue={product ? (product.priceCents / 100).toFixed(2) : ""} placeholder="Price, e.g. 32.00" className="form-control" />
-        <input aria-label="Sale price" name="salePrice" defaultValue={product?.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : ""} placeholder="Sale price optional" className="form-control" />
-        <input aria-label="Inventory stock" name="stock" type="number" min="0" defaultValue={product?.stock ?? ""} placeholder="Stock" className="form-control" />
-        <select aria-label="Availability" name="availability" className="form-control" defaultValue={product?.availability ?? "IN_STOCK"}>
-          {availabilityStatuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
-        </select>
-        <select aria-label="Product status" name="status" className="form-control" defaultValue={product?.status ?? "ACTIVE"}>
-          {productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-        </select>
-      </div>
-      <label className="form-label">
-        Upload primary image
-        <input aria-label="Upload primary image" name="primaryImageFile" type="file" accept="image/jpeg,image/png,image/webp" className="form-control" />
-      </label>
-      <label className="form-label">
-        Upload gallery images
-        <input aria-label="Upload gallery images" name="galleryImages" type="file" accept="image/jpeg,image/png,image/webp" multiple className="form-control" />
-      </label>
-      <input aria-label="Image URL" name="imageUrl" defaultValue={product?.imageUrl ?? ""} placeholder="Manual image URL fallback" className="form-control" />
-      <input aria-label="Tags" name="tags" defaultValue={product?.tags?.join(", ") ?? ""} placeholder="Tags, comma separated" className="form-control" />
-      <input aria-label="Short description" name="shortDescription" defaultValue={product?.shortDescription ?? ""} placeholder="Short description" className="form-control" />
-      <input aria-label="Meta description" name="metaDescription" defaultValue={product?.metaDescription ?? ""} placeholder="SEO/meta description" className="form-control" />
-      <textarea aria-label="Description" name="description" rows={4} defaultValue={product?.description ?? ""} placeholder="Long description" className="form-control" />
-      {!product && (
+      <ProductSection title="Basic Info">
         <div className="grid gap-3 lg:grid-cols-2">
-          <input aria-label="Variant name" name="variantName" placeholder="Variant name, e.g. Color" className="form-control" />
-          <input aria-label="Variant value" name="variantValue" placeholder="Variant value, e.g. Aqua" className="form-control" />
+          <Field label="Product name">
+            <input name="name" defaultValue={product?.name ?? ""} placeholder="Pink glitter tumbler" className="form-control" required />
+          </Field>
+          <Field label="Slug">
+            <input name="slug" defaultValue={product?.slug ?? ""} placeholder="Auto-generated when blank" className="form-control" />
+          </Field>
+          <Field label="Category">
+            <select name="categoryId" className="form-control" defaultValue={product?.categoryId ?? ""} required>
+              <option value="">Choose category</option>
+              {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Product status">
+            <select name="status" className="form-control" defaultValue={product?.status ?? "ACTIVE"}>
+              {productStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </Field>
         </div>
+        <Field label="Short description">
+          <input name="shortDescription" defaultValue={product?.shortDescription ?? ""} placeholder="One-line customer-facing summary" className="form-control" />
+        </Field>
+        <Field label="Long description">
+          <textarea name="description" rows={4} defaultValue={product?.description ?? ""} placeholder="Materials, sizing, custom details, care notes" className="form-control" required />
+        </Field>
+      </ProductSection>
+
+      <ProductSection title="Pricing">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Price">
+            <input name="price" inputMode="decimal" defaultValue={product ? (product.priceCents / 100).toFixed(2) : ""} placeholder="25.00" className="form-control" required />
+          </Field>
+          <Field label="Sale price">
+            <input name="salePrice" inputMode="decimal" defaultValue={product?.salePriceCents ? (product.salePriceCents / 100).toFixed(2) : ""} placeholder="Optional" className="form-control" />
+          </Field>
+        </div>
+      </ProductSection>
+
+      <ProductSection title="Inventory">
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Stock quantity">
+            <input name="stock" type="number" min="0" defaultValue={product?.stock ?? ""} placeholder="10" className="form-control" />
+          </Field>
+          <Field label="Availability">
+            <select name="availability" className="form-control" defaultValue={product?.availability ?? "IN_STOCK"}>
+              {availabilityStatuses.map((status) => <option key={status} value={status}>{status.replaceAll("_", " ")}</option>)}
+            </select>
+          </Field>
+        </div>
+        <div className="flex flex-wrap gap-4 text-sm font-bold">
+          <label className="flex items-center gap-2"><input name="featured" type="checkbox" defaultChecked={product?.featured ?? false} className="h-4 w-4 accent-boutique-pink" /> Featured</label>
+          <label className="flex items-center gap-2"><input name="madeToOrder" type="checkbox" defaultChecked={product?.madeToOrder ?? false} className="h-4 w-4 accent-boutique-pink" /> Made to order</label>
+        </div>
+      </ProductSection>
+
+      <ProductSection title="Media">
+        <Field label="Upload primary image">
+          <input name="primaryImageFile" type="file" accept="image/jpeg,image/png,image/webp" capture="environment" className="form-control" />
+        </Field>
+        <Field label="Upload gallery images">
+          <input name="galleryImages" type="file" accept="image/jpeg,image/png,image/webp" multiple className="form-control" />
+        </Field>
+        <Field label="Manual image URL fallback">
+          <input name="imageUrl" defaultValue={product?.imageUrl ?? ""} placeholder="https://..." className="form-control" />
+        </Field>
+      </ProductSection>
+
+      <ProductSection title="SEO">
+        <Field label="Tags">
+          <input name="tags" defaultValue={product?.tags?.join(", ") ?? ""} placeholder="tumblers, pink, glitter" className="form-control" />
+        </Field>
+        <Field label="Meta description">
+          <input name="metaDescription" defaultValue={product?.metaDescription ?? ""} placeholder="Short search/social summary" className="form-control" />
+        </Field>
+      </ProductSection>
+
+      <ProductSection title="Square Sync">
+        <div className="grid gap-3 text-sm font-bold text-boutique-charcoal/70 md:grid-cols-2">
+          <p>Catalog ID: {product?.squareCatalogId ?? "Not linked yet"}</p>
+          <p>Status: {product?.syncStatus?.replaceAll("_", " ") ?? "Not synced"}</p>
+          <p>Last sync: {product?.lastSyncedAt ? product.lastSyncedAt.toLocaleString() : "Not synced"}</p>
+          <p>Inventory sync: {product?.inventorySyncStatus?.replaceAll("_", " ") ?? "Not synced"}</p>
+        </div>
+      </ProductSection>
+
+      {!product && (
+        <ProductSection title="Variants">
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Field label="Variant name">
+              <input name="variantName" placeholder="Color" className="form-control" />
+            </Field>
+            <Field label="Variant value">
+              <input name="variantValue" placeholder="Aqua" className="form-control" />
+            </Field>
+          </div>
+        </ProductSection>
       )}
-      <div className="flex flex-wrap gap-4 text-sm font-bold">
-        <label className="flex items-center gap-2"><input name="featured" type="checkbox" defaultChecked={product?.featured ?? false} className="h-4 w-4 accent-boutique-pink" /> Featured</label>
-        <label className="flex items-center gap-2"><input name="madeToOrder" type="checkbox" defaultChecked={product?.madeToOrder ?? false} className="h-4 w-4 accent-boutique-pink" /> Made to order</label>
-      </div>
     </>
   );
 }

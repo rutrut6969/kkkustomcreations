@@ -24,6 +24,7 @@ import {
   Settings,
   ShoppingCart,
   Sparkles,
+  Users,
   WandSparkles,
   X
 } from "lucide-react";
@@ -35,6 +36,7 @@ const navItems = [
   { label: "Quick Add", href: "/admin/quick-add", icon: WandSparkles },
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
+  { label: "Customers", href: "/admin/customers", icon: Users },
   { label: "Custom Orders", href: "/admin/custom-orders", icon: ClipboardList },
   { label: "Events", href: "/admin/events", icon: CalendarDays },
   { label: "Blog Posts", href: "/admin/blog", icon: BookOpenText },

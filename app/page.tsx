@@ -4,7 +4,7 @@ import { CalendarDays, Gift, HeartHandshake, Sparkles } from "lucide-react";
 import { getAnnouncements, getEvents, getFeaturedProducts, getSettings } from "@/lib/data";
 import { ButtonLink } from "@/components/button-link";
 import { ProductCard } from "@/components/product-card";
-import { formatDate } from "@/lib/format";
+import { FeaturedEventsCarousel } from "@/components/featured-events-carousel";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,6 @@ export default async function HomePage() {
     getFeaturedProducts(),
     getEvents()
   ]);
-  const featuredEvent = events.find((event) => event.featured) ?? events[0];
 
   return (
     <>
@@ -38,7 +37,7 @@ export default async function HomePage() {
               K&K Kustom Kreations
             </h1>
             <p className="max-w-xl text-lg leading-8 text-boutique-charcoal/75">
-              {settings.homepageBannerText ?? "Handmade gifts, custom sparkle, and vendor-market favorites."}
+              {settings.homepageBannerText || "Handmade gifts, custom sparkle, and vendor-market favorites."}
             </p>
           </div>
           <div className="grid gap-3 sm:flex sm:flex-wrap">
@@ -55,8 +54,9 @@ export default async function HomePage() {
             sizes="(min-width: 768px) 50vw, 100vw"
             className="object-cover"
           />
-          <div className="absolute inset-x-4 bottom-4 rounded-boutique bg-white/92 p-4 shadow-soft">
-            <p className="font-black">Cups, pens, keychains, badge reels, wristlets, seasonal drops, and custom pieces.</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-boutique-charcoal/45 via-transparent to-white/10" />
+          <div className="absolute inset-x-4 bottom-4 rounded-boutique bg-white/94 p-4 shadow-soft backdrop-blur">
+            <p className="font-black text-boutique-charcoal">Cups, pens, keychains, badge reels, wristlets, seasonal drops, and custom pieces.</p>
           </div>
         </div>
       </section>
@@ -66,7 +66,7 @@ export default async function HomePage() {
           {[
             ["Custom sparkle", "Personal colors, names, themes, and handmade details.", Gift],
             ["Local events", "Find new pieces at vendor malls and community markets.", CalendarDays],
-            ["Easy checkout", "Square-hosted checkout keeps payments familiar and secure.", HeartHandshake]
+            ["Easy checkout", "Pay securely by card or Afterpay/Clearpay when available.", HeartHandshake]
           ].map(([title, body, Icon]) => (
             <div key={title as string} className="rounded-boutique border border-pink-100 bg-white p-5 shadow-soft">
               <Icon className="text-boutique-pink" />
@@ -92,21 +92,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {featuredEvent && (
-        <section className="container-page rounded-boutique border border-aqua-100 bg-aqua-50 p-6 shadow-soft md:p-8">
-          <p className="text-sm font-black uppercase tracking-[0.16em] text-aqua-700">Next featured event</p>
-          <div className="mt-3 grid gap-5 md:grid-cols-[1fr_auto] md:items-end">
-            <div>
-              <h2 className="text-2xl font-black">{featuredEvent.title}</h2>
-              <p className="mt-2 text-boutique-charcoal/75">
-                {formatDate(featuredEvent.date)} · {featuredEvent.time} · {featuredEvent.location}
-              </p>
-              <p className="mt-3 max-w-2xl leading-7 text-boutique-charcoal/75">{featuredEvent.description}</p>
-            </div>
-            <ButtonLink href="/events" variant="secondary">See events</ButtonLink>
-          </div>
-        </section>
-      )}
+      <FeaturedEventsCarousel events={events} />
     </>
   );
 }

@@ -95,8 +95,8 @@ export function QuickAddProduct() {
             <div className="flex flex-wrap gap-4 text-sm font-bold">
               <label className="flex items-center gap-2"><input name="featured" type="checkbox" className="h-4 w-4 accent-boutique-pink" /> Featured</label>
               <label className="flex items-center gap-2"><input name="madeToOrder" type="checkbox" className="h-4 w-4 accent-boutique-pink" /> Made to order</label>
-              <label className="flex items-center gap-2"><input name="pushSquare" type="checkbox" className="h-4 w-4 accent-boutique-pink" /> Push to Square after publish</label>
             </div>
+            <p className="rounded-xl bg-aqua-50 p-3 text-sm font-bold text-aqua-700">Publishing automatically attempts Square catalog and inventory sync. Any sync warning stays visible on the product record.</p>
             <button disabled={loading} className="focus-ring w-full rounded-full bg-boutique-pink px-5 py-3 text-sm font-black text-white shadow-pink sm:w-auto">Publish product</button>
           </>
         )}

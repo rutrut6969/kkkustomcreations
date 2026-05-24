@@ -17,6 +17,7 @@ type SquareCatalogObject = {
   item_data?: {
     name?: string;
     description?: string;
+    image_ids?: string[];
     categories?: { id: string }[];
     category_id?: string;
     variations?: SquareCatalogObject[];
@@ -27,6 +28,11 @@ type SquareCatalogObject = {
     item_id?: string;
     price_money?: { amount?: number; currency?: string };
     track_inventory?: boolean;
+  };
+  image_data?: {
+    name?: string;
+    url?: string;
+    caption?: string;
   };
 };
 
@@ -165,7 +171,7 @@ async function listCatalogObjects() {
   const objects: SquareCatalogObject[] = [];
   let cursor: string | undefined;
   do {
-    const query = new URLSearchParams({ types: "ITEM,CATEGORY" });
+  const query = new URLSearchParams({ types: "ITEM,CATEGORY,IMAGE" });
     if (cursor) query.set("cursor", cursor);
     const result = await squareRequest<{ objects?: SquareCatalogObject[]; cursor?: string }>(`/v2/catalog/list?${query.toString()}`);
     objects.push(...(result.objects ?? []));
@@ -205,7 +211,7 @@ async function categoryForSquareId(squareCategoryId?: string) {
   return prisma.category.findFirst({ orderBy: [{ sortOrder: "asc" }, { name: "asc" }] });
 }
 
-async function upsertSquareItem(object: SquareCatalogObject) {
+async function upsertSquareItem(object: SquareCatalogObject, imagesById = new Map<string, SquareCatalogObject>()) {
   const item = object.item_data;
   const name = item?.name?.trim();
   if (!name) return null;
@@ -214,6 +220,9 @@ async function upsertSquareItem(object: SquareCatalogObject) {
   const squareCategoryId = item?.categories?.[0]?.id ?? item?.category_id;
   const category = await categoryForSquareId(squareCategoryId);
   if (!category) throw new Error(`Cannot import ${name}: no local category exists.`);
+  const squareImageUrl = item?.image_ids
+    ?.map((id) => imagesById.get(id)?.image_data?.url)
+    .find(Boolean);
 
   const slug = slugify(name);
   const existing = await prisma.product.findFirst({
@@ -226,7 +235,7 @@ async function upsertSquareItem(object: SquareCatalogObject) {
     description: item?.description || "Imported from Square.",
     shortDescription: item?.description?.slice(0, 160) || null,
     priceCents,
-    imageUrl: existing?.imageUrl ?? "https://images.unsplash.com/photo-1516397281156-ca07cf9746fc?auto=format&fit=crop&w=900&q=80",
+    imageUrl: squareImageUrl ?? existing?.imageUrl ?? "/placeholder-product.svg",
     stock: existing?.stock ?? 0,
     categoryId: category.id,
     status: "ACTIVE" as const,
@@ -281,7 +290,8 @@ export async function pullSquareCatalogIntoWebsite() {
       await upsertSquareCategory(object);
     }
     for (const object of objects.filter((item) => item.type === "ITEM")) {
-      await upsertSquareItem(object);
+      const imagesById = new Map(objects.filter((item) => item.type === "IMAGE").map((item) => [item.id, item]));
+      await upsertSquareItem(object, imagesById);
     }
     const message = `Imported ${objects.filter((item) => item.type === "ITEM").length} products and ${objects.filter((item) => item.type === "CATEGORY").length} categories from Square.`;
     await setSquareSetting("squareLastCatalogPull", new Date().toLocaleString());
@@ -605,8 +615,50 @@ export async function importSquareOrders() {
       const recipient = mapRecipient(squareOrder);
       const totalCents = squareOrder.total_money?.amount ?? squareOrder.net_amount_due_money?.amount ?? 0;
       const existing = await prisma.order.findFirst({ where: { squareOrderId: squareOrder.id } });
+      const customerModel = prisma.customer as any;
+      const existingCustomer = recipient.email_address || recipient.phone_number
+        ? await customerModel.findFirst({
+            where: {
+              OR: [
+                ...(recipient.email_address ? [{ email: recipient.email_address }] : []),
+                ...(recipient.phone_number ? [{ phone: recipient.phone_number }] : [])
+              ]
+            }
+          })
+        : null;
+      const customer = existingCustomer
+        ? await customerModel.update({
+            where: { id: existingCustomer.id },
+            data: {
+              name: recipient.display_name || existingCustomer.name,
+              email: recipient.email_address || existingCustomer.email,
+              phone: recipient.phone_number || existingCustomer.phone,
+              address1: recipient.address?.address_line_1 || existingCustomer.address1,
+              city: recipient.address?.locality || existingCustomer.city,
+              state: recipient.address?.administrative_district_level_1 || existingCustomer.state,
+              postalCode: recipient.address?.postal_code || existingCustomer.postalCode,
+              country: "US",
+              lastOrderAt: asDate(squareOrder.created_at) ?? new Date(),
+              totalSpentCents: existing ? undefined : { increment: totalCents }
+            }
+          })
+        : await customerModel.create({
+            data: {
+              name: recipient.display_name || "Square customer",
+              email: recipient.email_address || null,
+              phone: recipient.phone_number || null,
+              address1: recipient.address?.address_line_1 || null,
+              city: recipient.address?.locality || null,
+              state: recipient.address?.administrative_district_level_1 || null,
+              postalCode: recipient.address?.postal_code || null,
+              country: "US",
+              lastOrderAt: asDate(squareOrder.created_at) ?? new Date(),
+              totalSpentCents: existing ? 0 : totalCents
+            }
+          });
       const data = {
         orderNumber: existing?.orderNumber ?? `SQ-${squareOrder.id.slice(-8).toUpperCase()}`,
+        customerId: customer.id,
         customerName: recipient.display_name || "Square customer",
         customerEmail: recipient.email_address || null,
         customerPhone: recipient.phone_number || null,

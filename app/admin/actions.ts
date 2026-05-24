@@ -191,10 +191,19 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
     });
   }
 
+  let syncMessage = "";
+  try {
+    await pushProductToSquare(product.id);
+    await syncProductInventoryToSquare(product.id);
+    syncMessage = " Synced to Square.";
+  } catch (error) {
+    syncMessage = ` Saved locally, but Square sync needs attention: ${error instanceof Error ? error.message : "Square sync failed."}`;
+  }
+
   revalidatePath("/");
   revalidatePath("/shop");
   revalidatePath("/admin/products");
-  return { ok: true, message: "Product saved." };
+  return { ok: true, message: `Product saved.${syncMessage}` };
 }
 
 export async function archiveProduct(formData: FormData) {

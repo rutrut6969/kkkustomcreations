@@ -51,11 +51,14 @@ export async function POST(request: Request) {
         images: { create: { url: imageUrl, alt: String(formData.get("altText") ?? name), sortOrder: 0 } }
       }
     });
-    if (formData.get("pushSquare") === "on") {
+    let syncWarning: string | null = null;
+    try {
       await pushProductToSquare(product.id);
       await syncProductInventoryToSquare(product.id);
+    } catch (error) {
+      syncWarning = error instanceof Error ? error.message : "Square sync failed.";
     }
-    return NextResponse.json({ ok: true, productId: product.id, url: `/admin/products?filter=active` });
+    return NextResponse.json({ ok: true, productId: product.id, syncWarning, url: `/admin/products?filter=active` });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Quick add publish failed." }, { status: 500 });
   }

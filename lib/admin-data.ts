@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
-import type { Category, MediaAsset, Product, ProductImage, ProductVariant } from "@prisma/client";
+import type { Category, Customer, MediaAsset, Product, ProductImage, ProductVariant } from "@prisma/client";
 
 async function safe<T>(query: () => Promise<T>, fallback: T): Promise<T> {
   if (!hasDatabaseUrl()) return fallback;
@@ -17,30 +17,87 @@ export async function getAdminMetrics() {
   if (!hasDatabaseUrl()) {
     return {
       totalProducts: 0,
+      activeProducts: 0,
+      archivedProducts: 0,
+      draftProducts: 0,
       recentOrders: 0,
+      paidOrders: 0,
+      pendingOrders: 0,
       pendingCustomRequests: 0,
       upcomingEvents: 0,
       recentMessages: 0,
-      featuredProducts: 0
+      unreadMessages: 0,
+      featuredProducts: 0,
+      lowStockItems: 0,
+      customers: 0,
+      marketingOptIns: 0
     };
   }
   return safe(async () => {
-    const [totalProducts, recentOrders, pendingCustomRequests, upcomingEvents, recentMessages, featuredProducts] = await Promise.all([
-      prisma.product.count(),
-      prisma.order.count(),
+    const [
+      totalProducts,
+      activeProducts,
+      archivedProducts,
+      draftProducts,
+      recentOrders,
+      paidOrders,
+      pendingOrders,
+      pendingCustomRequests,
+      upcomingEvents,
+      recentMessages,
+      featuredProducts,
+      lowStockItems,
+      customers,
+      marketingOptIns
+    ] = await Promise.all([
+      prisma.product.count({ where: { deletedAt: null } }),
+      prisma.product.count({ where: { status: "ACTIVE", deletedAt: null } }),
+      prisma.product.count({ where: { status: "ARCHIVED", deletedAt: null } }),
+      prisma.product.count({ where: { status: "DRAFT", deletedAt: null } }),
+      prisma.order.count({ where: { deletedAt: null } }),
+      prisma.order.count({ where: { paymentStatus: "PAID", deletedAt: null } }),
+      prisma.order.count({ where: { paymentStatus: "PENDING", deletedAt: null } }),
       prisma.customOrderRequest.count({ where: { archived: false, status: { notIn: ["COMPLETED", "ARCHIVED"] } } }),
       prisma.event.count({ where: { date: { gte: new Date() } } }),
       prisma.contactMessage.count(),
-      prisma.product.count({ where: { featured: true } })
+      prisma.product.count({ where: { featured: true, deletedAt: null } }),
+      prisma.product.count({ where: { availability: { in: ["LOW_STOCK", "OUT_OF_STOCK"] }, deletedAt: null } }),
+      prisma.customer.count(),
+      (prisma.customer as any).count({ where: { marketingConsent: true } })
     ]);
-    return { totalProducts, recentOrders, pendingCustomRequests, upcomingEvents, recentMessages, featuredProducts };
+    return {
+      totalProducts,
+      activeProducts,
+      archivedProducts,
+      draftProducts,
+      recentOrders,
+      paidOrders,
+      pendingOrders,
+      pendingCustomRequests,
+      upcomingEvents,
+      recentMessages,
+      unreadMessages: recentMessages,
+      featuredProducts,
+      lowStockItems,
+      customers,
+      marketingOptIns
+    };
   }, {
     totalProducts: 0,
+    activeProducts: 0,
+    archivedProducts: 0,
+    draftProducts: 0,
     recentOrders: 0,
+    paidOrders: 0,
+    pendingOrders: 0,
     pendingCustomRequests: 0,
     upcomingEvents: 0,
     recentMessages: 0,
-    featuredProducts: 0
+    unreadMessages: 0,
+    featuredProducts: 0,
+    lowStockItems: 0,
+    customers: 0,
+    marketingOptIns: 0
   });
 }
 
@@ -50,6 +107,8 @@ export async function getAdminProducts(filter = "active") {
       ? { status: "ARCHIVED" as const, deletedAt: null }
       : filter === "draft"
         ? { status: "DRAFT" as const, deletedAt: null }
+        : filter === "low-stock"
+          ? { availability: "LOW_STOCK" as const, deletedAt: null }
         : filter === "out-of-stock"
           ? { availability: "OUT_OF_STOCK" as const, deletedAt: null }
           : filter === "synced"
@@ -112,6 +171,30 @@ export async function getAdminMedia() {
   return safe(
     () => prisma.mediaAsset.findMany({ orderBy: { createdAt: "desc" } }),
     [] as MediaAsset[]
+  );
+}
+
+export async function getAdminCustomers(filter = "all") {
+  const where =
+    filter === "marketing"
+      ? { marketingConsent: true }
+      : filter === "repeat"
+        ? { orders: { some: {} } }
+        : filter === "high-value"
+          ? { totalSpentCents: { gte: 10000 } }
+          : filter === "recent"
+            ? { lastOrderAt: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) } }
+            : {};
+
+  return safe(
+    () =>
+      (prisma.customer as any).findMany({
+        where,
+        include: { _count: { select: { orders: true } } },
+        orderBy: [{ lastOrderAt: "desc" }, { updatedAt: "desc" }],
+        take: 200
+      }),
+    [] as Array<Customer & { _count: { orders: number } }>
   );
 }
 
