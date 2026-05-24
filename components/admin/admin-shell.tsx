@@ -20,9 +20,11 @@ import {
   Menu,
   MessageSquare,
   Package,
+  PieChart,
   Settings,
   ShoppingCart,
   Sparkles,
+  WandSparkles,
   X
 } from "lucide-react";
 import { logoutAdmin } from "@/app/admin/actions";
@@ -30,6 +32,7 @@ import { logoutAdmin } from "@/app/admin/actions";
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: BarChart3 },
   { label: "Products", href: "/admin/products", icon: Package },
+  { label: "Quick Add", href: "/admin/quick-add", icon: WandSparkles },
   { label: "Categories", href: "/admin/categories", icon: FolderTree },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Custom Orders", href: "/admin/custom-orders", icon: ClipboardList },
@@ -37,6 +40,7 @@ const navItems = [
   { label: "Blog Posts", href: "/admin/blog", icon: BookOpenText },
   { label: "Announcements", href: "/admin/announcements", icon: Bell },
   { label: "Messages", href: "/admin/messages", icon: MessageSquare },
+  { label: "Reports", href: "/admin/reports", icon: PieChart },
   { label: "Homepage Settings", href: "/admin/homepage", icon: Home },
   { label: "Media Library", href: "/admin/media", icon: Image },
   { label: "Integrations", href: "/admin/integrations", icon: CreditCard },
