@@ -5,9 +5,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { CustomOrderStatus, OrderStatus, PaymentStatus } from "@prisma/client";
+import { del } from "@vercel/blob";
 import { verifyAdminCredentials } from "@/lib/admin-auth";
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
+import { isUploadFile, uploadImageToBlob } from "@/lib/blob-upload";
 import {
   archiveProductInSquare,
   importSquareOrders,
@@ -111,8 +113,9 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
     salePrice: z.string().optional(),
     stock: z.string().optional(),
     shortDescription: z.string().optional(),
+    metaDescription: z.string().optional(),
     description: z.string().min(1),
-    imageUrl: z.string().min(1),
+    imageUrl: z.string().optional(),
     tags: z.string().optional(),
     status: z.enum(["ACTIVE", "DRAFT", "ARCHIVED"]),
     availability: z.enum(["IN_STOCK", "LOW_STOCK", "MADE_TO_ORDER", "OUT_OF_STOCK"]),
@@ -124,6 +127,16 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: "Please complete the required product fields." };
   const salePriceCents = parseCents(parsed.data.salePrice ?? null);
+  const primaryImageFile = formData.get("primaryImageFile");
+  let imageUrl = parsed.data.imageUrl || "";
+  if (isUploadFile(primaryImageFile)) {
+    try {
+      imageUrl = await uploadImageToBlob(primaryImageFile, "products", parsed.data.name);
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Image upload failed." };
+    }
+  }
+  if (!imageUrl) return { ok: false, message: "Add a product image upload or image URL." };
   const data = {
     name: parsed.data.name,
     slug: parsed.data.slug ? slugify(parsed.data.slug) : slugify(parsed.data.name),
@@ -132,8 +145,9 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
     salePriceCents,
     stock: Number(parsed.data.stock || 0),
     shortDescription: parsed.data.shortDescription || null,
+    metaDescription: parsed.data.metaDescription || parsed.data.shortDescription || null,
     description: parsed.data.description,
-    imageUrl: parsed.data.imageUrl,
+    imageUrl,
     tags: parseTags(parsed.data.tags ?? null),
     status: parsed.data.status,
     availability: parsed.data.availability,
@@ -146,9 +160,26 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
 
   await prisma.productImage.upsert({
     where: { id: `${product.id}-primary` },
-    create: { id: `${product.id}-primary`, productId: product.id, url: data.imageUrl, alt: data.name },
+    create: { id: `${product.id}-primary`, productId: product.id, url: data.imageUrl, alt: data.name, sortOrder: 0 },
     update: { url: data.imageUrl, alt: data.name }
   });
+
+  const galleryFiles = formData.getAll("galleryImages").filter(isUploadFile);
+  for (let index = 0; index < galleryFiles.length; index += 1) {
+    try {
+      const url = await uploadImageToBlob(galleryFiles[index], "products/gallery", parsed.data.name);
+      await prisma.productImage.create({
+        data: {
+          productId: product.id,
+          url,
+          alt: `${parsed.data.name} gallery image`,
+          sortOrder: index + 1
+        }
+      });
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Gallery image upload failed." };
+    }
+  }
 
   if (parsed.data.variantName && parsed.data.variantValue) {
     await prisma.productVariant.create({
@@ -169,7 +200,48 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
 export async function archiveProduct(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (hasDatabaseUrl() && id) {
-    await prisma.product.update({ where: { id }, data: { status: "ARCHIVED", availability: "OUT_OF_STOCK" } });
+    await prisma.product.update({ where: { id }, data: { status: "ARCHIVED", availability: "OUT_OF_STOCK", archivedAt: new Date() } });
+  }
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+}
+
+export async function restoreProduct(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (hasDatabaseUrl() && id) {
+    await prisma.product.update({ where: { id }, data: { status: "ACTIVE", archivedAt: null, deletedAt: null } });
+  }
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+}
+
+export async function permanentlyDeleteProduct(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const confirmDelete = formData.get("confirmDelete") === "on";
+  if (!hasDatabaseUrl() || !id) return;
+  const paidOrderCount = await prisma.orderItem.count({
+    where: { productId: id, order: { paymentStatus: "PAID" } }
+  });
+  if (paidOrderCount > 0 && !confirmDelete) {
+    await prisma.product.update({
+      where: { id },
+      data: { status: "ARCHIVED", availability: "OUT_OF_STOCK", archivedAt: new Date(), deletedAt: new Date() }
+    });
+  } else {
+    await prisma.product.delete({ where: { id } });
+  }
+  revalidatePath("/shop");
+  revalidatePath("/admin/products");
+}
+
+export async function setPrimaryProductImage(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (hasDatabaseUrl() && id) {
+    const image = await prisma.productImage.findUnique({ where: { id }, include: { product: true } });
+    if (image) {
+      await prisma.product.update({ where: { id: image.productId }, data: { imageUrl: image.url } });
+      await prisma.productImage.update({ where: { id }, data: { sortOrder: 0 } });
+    }
   }
   revalidatePath("/shop");
   revalidatePath("/admin/products");
@@ -177,7 +249,13 @@ export async function archiveProduct(formData: FormData) {
 
 export async function deleteProductImage(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  if (hasDatabaseUrl() && id) await prisma.productImage.delete({ where: { id } });
+  if (hasDatabaseUrl() && id) {
+    const image = await prisma.productImage.findUnique({ where: { id } });
+    if (image) {
+      await prisma.productImage.delete({ where: { id } });
+      if (image.url.includes("blob.vercel-storage.com")) await del(image.url).catch(() => undefined);
+    }
+  }
   revalidatePath("/admin/products");
 }
 
@@ -215,6 +293,31 @@ export async function deleteCategory(formData: FormData) {
   if (hasDatabaseUrl() && id) await prisma.category.delete({ where: { id } });
   revalidatePath("/shop");
   revalidatePath("/admin/categories");
+}
+
+export async function archiveOrder(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (hasDatabaseUrl() && id) await prisma.order.update({ where: { id }, data: { archivedAt: new Date() } });
+  revalidatePath("/admin/orders");
+}
+
+export async function restoreOrder(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (hasDatabaseUrl() && id) await prisma.order.update({ where: { id }, data: { archivedAt: null, deletedAt: null } });
+  revalidatePath("/admin/orders");
+}
+
+export async function permanentlyDeleteOrder(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const confirmDelete = formData.get("confirmDelete") === "on";
+  if (!hasDatabaseUrl() || !id) return;
+  const order = await prisma.order.findUnique({ where: { id }, select: { paymentStatus: true } });
+  if (order?.paymentStatus === "PAID" && !confirmDelete) {
+    await prisma.order.update({ where: { id }, data: { archivedAt: new Date(), deletedAt: new Date() } });
+  } else {
+    await prisma.order.delete({ where: { id } });
+  }
+  revalidatePath("/admin/orders");
 }
 
 export async function pushCategoryToSquareAction(_state: AdminState, formData: FormData): Promise<AdminState> {
@@ -289,19 +392,30 @@ export async function saveCustomOrderAdmin(_state: AdminState, formData: FormDat
 export async function saveMediaAsset(_state: AdminState, formData: FormData): Promise<AdminState> {
   const noDb = requireDb();
   if (noDb) return noDb;
+  const uploadFile = formData.get("mediaFile");
+  let uploadedUrl = "";
+  if (isUploadFile(uploadFile)) {
+    try {
+      uploadedUrl = await uploadImageToBlob(uploadFile, "media", String(formData.get("altText") ?? ""));
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "Media upload failed." };
+    }
+  }
   const schema = z.object({
     id: z.string().optional(),
     fileName: z.string().min(1),
-    url: z.string().min(1),
+    url: z.string().optional(),
     altText: z.string().optional(),
     assetType: z.enum(["IMAGE", "DOCUMENT", "OTHER"]),
     mimeType: z.string().optional()
   });
   const parsed = schema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { ok: false, message: "Media name and URL are required." };
+  if (!parsed.success) return { ok: false, message: "Media name is required." };
+  const url = uploadedUrl || parsed.data.url || "";
+  if (!url) return { ok: false, message: "Upload a file or add a media URL." };
   const data = {
     fileName: parsed.data.fileName,
-    url: parsed.data.url,
+    url,
     altText: parsed.data.altText || null,
     assetType: parsed.data.assetType,
     mimeType: parsed.data.mimeType || null
@@ -314,7 +428,13 @@ export async function saveMediaAsset(_state: AdminState, formData: FormData): Pr
 
 export async function deleteMediaAsset(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  if (hasDatabaseUrl() && id) await prisma.mediaAsset.delete({ where: { id } });
+  if (hasDatabaseUrl() && id) {
+    const asset = await prisma.mediaAsset.findUnique({ where: { id } });
+    if (asset) {
+      await prisma.mediaAsset.delete({ where: { id } });
+      if (asset.url.includes("blob.vercel-storage.com")) await del(asset.url).catch(() => undefined);
+    }
+  }
   revalidatePath("/admin/media");
 }
 

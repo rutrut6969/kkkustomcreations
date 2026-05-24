@@ -44,10 +44,23 @@ export async function getAdminMetrics() {
   });
 }
 
-export async function getAdminProducts() {
+export async function getAdminProducts(filter = "active") {
+  const where =
+    filter === "archived"
+      ? { status: "ARCHIVED" as const, deletedAt: null }
+      : filter === "draft"
+        ? { status: "DRAFT" as const, deletedAt: null }
+        : filter === "out-of-stock"
+          ? { availability: "OUT_OF_STOCK" as const, deletedAt: null }
+          : filter === "synced"
+            ? { syncStatus: "SYNCED" as const, deletedAt: null }
+            : filter === "not-synced"
+              ? { syncStatus: { not: "SYNCED" as const }, deletedAt: null }
+              : { status: { not: "ARCHIVED" as const }, deletedAt: null };
   return safe(
     () =>
       prisma.product.findMany({
+        where,
         include: { category: true, images: { orderBy: { sortOrder: "asc" } }, variants: true },
         orderBy: { updatedAt: "desc" }
       }),
@@ -70,6 +83,7 @@ export async function getAdminProducts() {
       createdAt: new Date(),
       updatedAt: new Date(),
       shortDescription: product.description,
+      metaDescription: product.description.slice(0, 150),
       salePriceCents: null,
       madeToOrder: product.availability === "MADE_TO_ORDER",
       tags: []
@@ -99,9 +113,21 @@ export async function getAdminCategories() {
   );
 }
 
-export async function getAdminOrders() {
+export async function getAdminOrders(filter = "open") {
+  const where =
+    filter === "paid"
+      ? { paymentStatus: "PAID" as const, archivedAt: null, deletedAt: null }
+      : filter === "pending"
+        ? { paymentStatus: "PENDING" as const, archivedAt: null, deletedAt: null }
+        : filter === "completed"
+          ? { status: "COMPLETED" as const, archivedAt: null, deletedAt: null }
+          : filter === "canceled"
+            ? { status: "CANCELED" as const, archivedAt: null, deletedAt: null }
+            : filter === "archived"
+              ? { archivedAt: { not: null }, deletedAt: null }
+              : { archivedAt: null, deletedAt: null };
   return safe(
-    () => prisma.order.findMany({ include: { items: true, customer: true }, orderBy: { createdAt: "desc" }, take: 50 }),
+    () => prisma.order.findMany({ where, include: { items: true, customer: true }, orderBy: { createdAt: "desc" }, take: 50 }),
     []
   );
 }

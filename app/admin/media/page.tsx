@@ -10,11 +10,15 @@ export default async function AdminMediaPage() {
   const assets = await getAdminMedia();
   return (
     <div>
-      <AdminPageHeader title="Media Library" eyebrow="Assets" description="Upload by URL for Phase 1, then reuse images for products, posts, and events. Drag/drop storage can plug in later." />
+      <AdminPageHeader title="Media Library" eyebrow="Assets" description="Upload product and content images to Vercel Blob, or keep a manual URL fallback." />
       <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <AdminForm action={saveMediaAsset} submitLabel="Add media asset">
           <input aria-label="File name" name="fileName" placeholder="File name" className="form-control" />
-          <input aria-label="Media URL" name="url" placeholder="Image or file URL" className="form-control" />
+          <label className="form-label">
+            Upload image
+            <input aria-label="Upload media image" name="mediaFile" type="file" accept="image/jpeg,image/png,image/webp" className="form-control" />
+          </label>
+          <input aria-label="Media URL" name="url" placeholder="Manual image or file URL fallback" className="form-control" />
           <input aria-label="Alt text" name="altText" placeholder="Alt text" className="form-control" />
           <select aria-label="Asset type" name="assetType" className="form-control">
             <option value="IMAGE">Image</option>

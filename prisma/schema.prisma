@@ -96,6 +96,7 @@ model Product {
   name            String
   slug            String             @unique
   shortDescription String?
+  metaDescription String?
   description     String
   priceCents      Int
   salePriceCents  Int?
@@ -121,6 +122,8 @@ model Product {
   variants        ProductVariant[]
   orderItems      OrderItem[]
   socialProof     SocialProofPurchase[]
+  archivedAt      DateTime?
+  deletedAt       DateTime?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 }
@@ -199,6 +202,8 @@ model Order {
   state           String?
   postalCode      String?
   items           OrderItem[]
+  archivedAt      DateTime?
+  deletedAt       DateTime?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 }
