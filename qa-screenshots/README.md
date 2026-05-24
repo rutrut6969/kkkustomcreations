@@ -16,5 +16,10 @@ The in-app browser pane became unavailable during the final QA pass, and local h
 - `npm run lint`
 - `npm run typecheck`
 - `npx next build`
+- `npm run prisma:deploy`
 
 `npm run build` currently reaches the Prisma generate step, but Windows keeps the generated Prisma query-engine DLL locked from the local Codex/Node process. Running `npx next build` directly succeeds against the already generated Prisma client.
+
+## Production Hardening Pass
+
+For the production hardening pass, `npm install`, `npm run lint`, `npm run typecheck`, `npm run prisma:deploy`, and `npx next build` completed successfully. Local screenshot capture was attempted against `next start`, but the local Windows sandbox could not maintain a reachable connection to the Prisma Postgres host long enough for valid screenshots. Connection-error screenshots were discarded to avoid confusing them with real UI captures.
