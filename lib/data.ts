@@ -1,14 +1,29 @@
 import "server-only";
 
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
-import { sampleAnnouncements, sampleCategories, sampleEvents, samplePosts, sampleProducts, sampleSettings, sampleSocialProof } from "@/lib/sample-data";
+import type { Announcement, BlogPost, Category, Event, Product } from "@prisma/client";
+import type { SocialProofView } from "@/lib/types";
+
+const defaultSettings: Record<string, string> = {
+  businessName: "K&K Kustom Kreations",
+  homepageBannerText: "",
+  businessInfo: "",
+  contactEmail: "",
+  contactPhone: "",
+  facebookUrl: "",
+  facebookEmbedUrl: "",
+  shippingText: "",
+  pickupText: "",
+  dropoffText: "",
+  customOrdersEnabled: "true"
+};
 
 async function fromDb<T>(query: () => Promise<T>, fallback: T): Promise<T> {
   if (!hasDatabaseUrl()) return fallback;
   try {
     return await query();
   } catch (error) {
-    console.warn("Using sample data fallback:", error);
+    console.warn("Database query failed; returning empty/default content:", error);
     return fallback;
   }
 }
@@ -19,19 +34,19 @@ export async function getSettings() {
     return settings.reduce<Record<string, string>>((acc, setting) => {
       acc[setting.key] = setting.value;
       return acc;
-    }, { ...sampleSettings });
-  }, sampleSettings);
+    }, { ...defaultSettings });
+  }, defaultSettings);
 }
 
 export async function getAnnouncements(includeInactive = false) {
   return fromDb(
     () => prisma.announcement.findMany({ where: includeInactive ? undefined : { active: true }, orderBy: { createdAt: "desc" } }),
-    includeInactive ? sampleAnnouncements : sampleAnnouncements.filter((announcement) => announcement.active)
+    [] as Announcement[]
   );
 }
 
 export async function getCategories() {
-  return fromDb(() => prisma.category.findMany({ orderBy: { name: "asc" } }), sampleCategories);
+  return fromDb(() => prisma.category.findMany({ orderBy: { name: "asc" } }), [] as Category[]);
 }
 
 export async function getProducts() {
@@ -42,7 +57,7 @@ export async function getProducts() {
         include: { category: true },
         orderBy: [{ featured: "desc" }, { name: "asc" }]
       }),
-    sampleProducts
+    [] as Array<Product & { category: Category }>
   );
 }
 
@@ -58,7 +73,7 @@ export async function getProductBySlug(slug: string) {
         where: { slug },
         include: { category: true }
       }),
-    sampleProducts.find((item) => item.slug === slug) ?? null
+    null as (Product & { category: Category }) | null
   );
   return product;
 }
@@ -69,7 +84,7 @@ export async function getRelatedProducts(categorySlug: string, currentSlug: stri
 }
 
 export async function getEvents() {
-  return fromDb(() => prisma.event.findMany({ orderBy: [{ featured: "desc" }, { date: "asc" }] }), sampleEvents);
+  return fromDb(() => prisma.event.findMany({ orderBy: [{ featured: "desc" }, { date: "asc" }] }), [] as Event[]);
 }
 
 export async function getBlogPosts(includeDrafts = false) {
@@ -79,14 +94,14 @@ export async function getBlogPosts(includeDrafts = false) {
         where: includeDrafts ? undefined : { status: "PUBLISHED" },
         orderBy: { publishedDate: "desc" }
       }),
-    includeDrafts ? samplePosts : samplePosts.filter((post) => post.status === "PUBLISHED")
+    [] as BlogPost[]
   );
 }
 
 export async function getBlogPostBySlug(slug: string) {
   return fromDb(
     () => prisma.blogPost.findUnique({ where: { slug } }),
-    samplePosts.find((post) => post.slug === slug) ?? null
+    null as BlogPost | null
   );
 }
 
@@ -107,6 +122,6 @@ export async function getSocialProofPurchases() {
         isSample: purchase.isSample
       }));
     },
-    sampleSocialProof
+    [] as SocialProofView[]
   );
 }

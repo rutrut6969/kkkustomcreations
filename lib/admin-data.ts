@@ -1,14 +1,14 @@
 import "server-only";
 
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
-import { sampleCategories, sampleEvents, samplePosts, sampleProducts, sampleSettings } from "@/lib/sample-data";
+import type { Category, MediaAsset, Product, ProductImage, ProductVariant } from "@prisma/client";
 
 async function safe<T>(query: () => Promise<T>, fallback: T): Promise<T> {
   if (!hasDatabaseUrl()) return fallback;
   try {
     return await query();
   } catch (error) {
-    console.warn("Using admin fallback:", error);
+    console.warn("Admin database query failed; returning empty/default content:", error);
     return fallback;
   }
 }
@@ -16,12 +16,12 @@ async function safe<T>(query: () => Promise<T>, fallback: T): Promise<T> {
 export async function getAdminMetrics() {
   if (!hasDatabaseUrl()) {
     return {
-      totalProducts: sampleProducts.length,
-      recentOrders: 2,
+      totalProducts: 0,
+      recentOrders: 0,
       pendingCustomRequests: 0,
-      upcomingEvents: sampleEvents.length,
+      upcomingEvents: 0,
       recentMessages: 0,
-      featuredProducts: sampleProducts.filter((product) => product.featured).length
+      featuredProducts: 0
     };
   }
   return safe(async () => {
@@ -35,12 +35,12 @@ export async function getAdminMetrics() {
     ]);
     return { totalProducts, recentOrders, pendingCustomRequests, upcomingEvents, recentMessages, featuredProducts };
   }, {
-    totalProducts: sampleProducts.length,
+    totalProducts: 0,
     recentOrders: 0,
     pendingCustomRequests: 0,
-    upcomingEvents: sampleEvents.length,
+    upcomingEvents: 0,
     recentMessages: 0,
-    featuredProducts: sampleProducts.filter((product) => product.featured).length
+    featuredProducts: 0
   });
 }
 
@@ -64,52 +64,14 @@ export async function getAdminProducts(filter = "active") {
         include: { category: true, images: { orderBy: { sortOrder: "asc" } }, variants: true },
         orderBy: { updatedAt: "desc" }
       }),
-    sampleProducts.map((product) => ({
-      ...product,
-      categoryId: product.category.id,
-      category: { ...product.category, createdAt: new Date(), updatedAt: new Date(), sortOrder: 0, bannerImageUrl: null, visible: true },
-      images: [],
-      variants: [],
-      status: "ACTIVE" as const,
-      squareCatalogId: null,
-      squareVersion: null,
-      squareUpdatedAt: null,
-      lastSyncedAt: null,
-      syncStatus: "NOT_SYNCED" as const,
-      syncError: null,
-      inventorySyncedAt: null,
-      inventorySyncStatus: "NOT_SYNCED" as const,
-      inventorySyncError: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      shortDescription: product.description,
-      metaDescription: product.description.slice(0, 150),
-      salePriceCents: null,
-      madeToOrder: product.availability === "MADE_TO_ORDER",
-      tags: []
-    }) as any)
+    [] as Array<Product & { category: Category; images: ProductImage[]; variants: ProductVariant[] }>
   );
 }
 
 export async function getAdminCategories() {
   return safe(
     () => prisma.category.findMany({ include: { _count: { select: { products: true } } }, orderBy: [{ sortOrder: "asc" }, { name: "asc" }] }),
-    sampleCategories.map((category, index) => ({
-      ...category,
-      description: category.description ?? null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      bannerImageUrl: null,
-      visible: true,
-      sortOrder: index,
-      squareCatalogId: null,
-      squareVersion: null,
-      squareUpdatedAt: null,
-      lastSyncedAt: null,
-      syncStatus: "NOT_SYNCED" as const,
-      syncError: null,
-      _count: { products: sampleProducts.filter((product) => product.category.slug === category.slug).length }
-    }) as any)
+    [] as Array<Category & { _count: { products: number } }>
   );
 }
 
@@ -149,17 +111,7 @@ export async function getAdminMessages() {
 export async function getAdminMedia() {
   return safe(
     () => prisma.mediaAsset.findMany({ orderBy: { createdAt: "desc" } }),
-    sampleProducts.slice(0, 4).map((product) => ({
-      id: `sample-${product.id}`,
-      fileName: product.name,
-      url: product.imageUrl,
-      altText: product.name,
-      assetType: "IMAGE" as const,
-      mimeType: "image/jpeg",
-      sizeBytes: null,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }))
+    [] as MediaAsset[]
   );
 }
 
@@ -177,11 +129,17 @@ export async function getAdminActivity() {
 export async function getIntegrationStatus() {
   const environment = process.env.SQUARE_ENVIRONMENT === "production" ? "production" : "sandbox";
   const prefix = environment === "production" ? "SQUARE_PRODUCTION" : "SQUARE_SANDBOX";
+  const settings = await safe(
+    () => prisma.siteSetting.findMany({ where: { key: { in: ["squareLastSync"] } } }),
+    []
+  );
+  const settingMap = Object.fromEntries(settings.map((setting) => [setting.key, setting.value]));
+
   return {
     environment,
     hasAccessToken: Boolean(process.env[`${prefix}_ACCESS_TOKEN`]),
     hasApplicationId: Boolean(process.env[`${prefix}_APPLICATION_ID`]),
     hasWebhookKey: Boolean(process.env.SQUARE_WEBHOOK_SIGNATURE_KEY),
-    lastSync: sampleSettings.squareLastSync ?? "Not synced yet"
+    lastSync: settingMap.squareLastSync ?? "Not synced yet"
   };
 }
