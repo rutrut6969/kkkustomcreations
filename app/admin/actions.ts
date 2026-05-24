@@ -273,6 +273,7 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
     status: z.enum(["ACTIVE", "DRAFT", "ARCHIVED"]),
     availability: z.enum(["IN_STOCK", "LOW_STOCK", "MADE_TO_ORDER", "OUT_OF_STOCK"]),
     featured: z.string().optional(),
+    trackQuantity: z.string().optional(),
     madeToOrder: z.string().optional(),
     variantName: z.string().optional(),
     variantValue: z.string().optional()
@@ -290,6 +291,8 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
     }
   }
   if (!imageUrl) return { ok: false, message: "Add a product image upload or image URL." };
+  const tracksQuantity = parsed.data.trackQuantity === "on" && parsed.data.madeToOrder !== "on";
+  const madeToOrder = parsed.data.madeToOrder === "on" || !tracksQuantity;
   const data = {
     name: parsed.data.name,
     slug: parsed.data.slug ? slugify(parsed.data.slug) : slugify(parsed.data.name),
@@ -303,9 +306,9 @@ export async function saveProduct(_state: AdminState, formData: FormData): Promi
     imageUrl,
     tags: parseTags(parsed.data.tags ?? null),
     status: parsed.data.status,
-    availability: parsed.data.availability,
+    availability: madeToOrder ? "MADE_TO_ORDER" as const : parsed.data.availability,
     featured: parsed.data.featured === "on",
-    madeToOrder: parsed.data.madeToOrder === "on"
+    madeToOrder
   };
   const product = parsed.data.id
     ? await prisma.product.update({ where: { id: parsed.data.id }, data })

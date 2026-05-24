@@ -40,8 +40,9 @@ export async function adjustInventoryForPaidOrder(orderId: string, idempotencyKe
   await prisma.$transaction(async (tx) => {
     for (const item of order.items) {
       if (!item.productId) continue;
-      const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true } });
+      const product = await tx.product.findUnique({ where: { id: item.productId }, select: { stock: true, madeToOrder: true, availability: true } });
       if (!product) continue;
+      if (product.madeToOrder || product.availability === AvailabilityStatus.MADE_TO_ORDER) continue;
       const nextStock = Math.max(0, product.stock - item.quantity);
       await tx.product.update({
         where: { id: item.productId },

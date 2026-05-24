@@ -18,8 +18,12 @@ const defaultSettings: Record<string, string> = {
   customOrdersEnabled: "true"
 };
 
+function isProductionBuildPhase() {
+  return process.env.NEXT_PHASE === "phase-production-build";
+}
+
 async function fromDb<T>(query: () => Promise<T>, fallback: T): Promise<T> {
-  if (!hasDatabaseUrl()) return fallback;
+  if (!hasDatabaseUrl() || isProductionBuildPhase()) return fallback;
   try {
     return await query();
   } catch (error) {
@@ -106,20 +110,28 @@ export async function getBlogPostBySlug(slug: string) {
 }
 
 export async function getSocialProofPurchases() {
-  if (!hasDatabaseUrl()) return [];
+  if (!hasDatabaseUrl() || isProductionBuildPhase()) return [];
   try {
     const purchases = await prisma.socialProofPurchase.findMany({
       include: { product: { include: { category: true } } },
       orderBy: { createdAt: "desc" },
       take: 12
     });
-    if (purchases.length) {
-      return purchases.map((purchase) => ({
+    const validPurchases = purchases.filter(
+      (purchase) =>
+        purchase.product &&
+        purchase.product.status === "ACTIVE" &&
+        !purchase.product.archivedAt &&
+        !purchase.product.deletedAt &&
+        ["IN_STOCK", "LOW_STOCK", "MADE_TO_ORDER"].includes(purchase.product.availability)
+    );
+    if (validPurchases.length) {
+      return validPurchases.map((purchase) => ({
         id: purchase.id,
         customerName: purchase.customerName,
-        productName: purchase.productName,
-        productSlug: purchase.product?.availability === "OUT_OF_STOCK" ? undefined : purchase.product?.slug,
-        fallbackUrl: purchase.product?.availability === "OUT_OF_STOCK" ? `/shop?category=${purchase.product.category.slug}` : purchase.fallbackUrl,
+        productName: purchase.product?.name ?? purchase.productName,
+        productSlug: purchase.product?.slug,
+        fallbackUrl: `/shop?category=${purchase.product?.category.slug}`,
         isSample: purchase.isSample
       }));
     }

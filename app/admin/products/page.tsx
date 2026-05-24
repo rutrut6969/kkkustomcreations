@@ -105,8 +105,12 @@ function ProductFields({ categories, product }: { categories: Awaited<ReturnType
         </div>
         <div className="flex flex-wrap gap-4 text-sm font-bold">
           <label className="flex items-center gap-2"><input name="featured" type="checkbox" defaultChecked={product?.featured ?? false} className="h-4 w-4 accent-boutique-pink" /> Featured</label>
-          <label className="flex items-center gap-2"><input name="madeToOrder" type="checkbox" defaultChecked={product?.madeToOrder ?? false} className="h-4 w-4 accent-boutique-pink" /> Made to order</label>
+          <label className="flex items-center gap-2"><input name="trackQuantity" type="checkbox" defaultChecked={product ? !product.madeToOrder : true} className="h-4 w-4 accent-boutique-pink" /> Track quantity</label>
+          <label className="flex items-center gap-2"><input name="madeToOrder" type="checkbox" defaultChecked={product?.madeToOrder ?? false} className="h-4 w-4 accent-boutique-pink" /> Always available / made to order</label>
         </div>
+        <p className="text-xs font-bold leading-5 text-boutique-charcoal/55">
+          Use Track quantity for stocked Square inventory. Use Always available for custom or made-to-order items that should not decrement after checkout.
+        </p>
       </ProductSection>
 
       <ProductSection title="Media">
@@ -189,7 +193,9 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                   </div>
                   <div>
                     <p className="font-black">{product.name}</p>
-                    <p className="text-sm text-boutique-charcoal/60">{product.category.name} - {formatMoney(product.salePriceCents ?? product.priceCents)} - stock {product.stock}</p>
+                    <p className="text-sm text-boutique-charcoal/60">
+                      {product.category.name} - {formatMoney(product.salePriceCents ?? product.priceCents)} - {product.madeToOrder ? "always available" : `stock ${product.stock}`}
+                    </p>
                     <p className="mt-1 text-xs font-bold text-boutique-charcoal/45">
                       Square: {product.squareCatalogId ?? "not linked"} {product.lastSyncedAt ? `- synced ${product.lastSyncedAt.toLocaleString()}` : ""}
                     </p>
@@ -199,6 +205,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {product.featured && <StatusPill tone="pink">Featured</StatusPill>}
+                    {product.madeToOrder && <StatusPill tone="aqua">Always available</StatusPill>}
                     <StatusPill tone={product.status === "ACTIVE" ? "aqua" : "neutral"}>{product.status}</StatusPill>
                     <StatusPill>{product.availability.replaceAll("_", " ")}</StatusPill>
                     <StatusPill tone={product.syncStatus === "SYNCED" ? "aqua" : product.syncStatus === "ERROR" ? "pink" : "neutral"}>{product.syncStatus.replaceAll("_", " ")}</StatusPill>

@@ -54,9 +54,11 @@ export default async function HomePage() {
             sizes="(min-width: 768px) 50vw, 100vw"
             className="object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-boutique-charcoal/45 via-transparent to-white/10" />
-          <div className="absolute inset-x-4 bottom-4 rounded-boutique bg-white/94 p-4 shadow-soft backdrop-blur">
-            <p className="font-black text-boutique-charcoal">Cups, pens, keychains, badge reels, wristlets, seasonal drops, and custom pieces.</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-boutique-charcoal/70 via-boutique-charcoal/25 to-white/20" />
+          <div className="absolute inset-x-4 bottom-4 rounded-boutique border border-white/80 bg-white/98 p-4 shadow-pink backdrop-blur-md">
+            <p className="text-base font-black leading-7 text-boutique-charcoal drop-shadow-sm">
+              Cups, pens, keychains, badge reels, wristlets, seasonal drops, and custom pieces.
+            </p>
           </div>
         </div>
       </section>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { AlertCircle, CheckCircle2, CreditCard, Loader2, Pencil, Sparkles } from "lucide-react";
+import { AlertCircle, CheckCircle2, CreditCard, Loader2, Lock, Pencil } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { clearCart, getCart, getCartSummary, type CartItem } from "@/lib/cart";
 import { formatMoney } from "@/lib/format";
@@ -155,6 +155,7 @@ export function SquareCheckoutPage() {
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const summary = useMemo(() => getCartSummary(items), [items]);
   const needsAddress = customer.fulfillmentType !== "PICKUP";
+  const customerInfoValid = !validateCustomer();
 
   useEffect(() => {
     setItems(getCart());
@@ -267,6 +268,21 @@ export function SquareCheckoutPage() {
     return null;
   }
 
+  function canOpenStep(targetStep: 1 | 2 | 3) {
+    if (targetStep === 1 || targetStep === 2) return true;
+    return customerInfoValid;
+  }
+
+  function goToStep(targetStep: 1 | 2 | 3) {
+    if (!canOpenStep(targetStep)) {
+      setMessage("Complete customer info before continuing to payment.");
+      setStep(2);
+      return;
+    }
+    setMessage(null);
+    setStep(targetStep);
+  }
+
   function continueToPayment() {
     const validationError = validateCustomer();
     if (validationError) {
@@ -375,15 +391,24 @@ export function SquareCheckoutPage() {
           {["Cart Review", "Customer Info", "Payment"].map((label, index) => {
             const number = index + 1;
             const active = step === number;
+            const unlocked = canOpenStep(number as 1 | 2 | 3);
             return (
               <button
                 key={label}
                 type="button"
-                onClick={() => setStep(number as 1 | 2 | 3)}
-                className={`rounded-2xl px-3 py-2 text-left text-sm font-black transition ${active ? "bg-boutique-pink text-white shadow-pink" : "bg-boutique-blush text-boutique-charcoal"}`}
+                onClick={() => goToStep(number as 1 | 2 | 3)}
+                aria-disabled={!unlocked}
+                className={`rounded-2xl px-3 py-2 text-left text-sm font-black transition ${
+                  active
+                    ? "bg-boutique-pink text-white shadow-pink"
+                    : unlocked
+                      ? "bg-boutique-blush text-boutique-charcoal hover:bg-aqua-50"
+                      : "cursor-not-allowed bg-zinc-100 text-boutique-charcoal/45"
+                }`}
               >
                 <span className="mr-2 inline-grid h-6 w-6 place-items-center rounded-full bg-white/80 text-xs text-boutique-charcoal">{number}</span>
                 {label}
+                {!unlocked && <Lock size={13} className="ml-2 inline" aria-hidden="true" />}
               </button>
             );
           })}
@@ -392,7 +417,7 @@ export function SquareCheckoutPage() {
         <section className="rounded-boutique border border-pink-100 bg-white p-5 shadow-soft">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-black">Cart review</h2>
-            <button type="button" onClick={() => setStep(1)} className="text-sm font-black text-boutique-pink">Review items</button>
+            <button type="button" onClick={() => goToStep(1)} className="text-sm font-black text-boutique-pink">Review items</button>
           </div>
           {step === 1 && (
             <div className="mt-4 space-y-3">
@@ -408,7 +433,7 @@ export function SquareCheckoutPage() {
                   <p className="font-black">{formatMoney(item.priceCents * item.quantity)}</p>
                 </div>
               ))}
-              <button type="button" onClick={() => setStep(2)} className="focus-ring w-full rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink sm:w-auto">
+              <button type="button" onClick={() => goToStep(2)} className="focus-ring w-full rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink sm:w-auto">
                 Continue
               </button>
             </div>
@@ -419,7 +444,7 @@ export function SquareCheckoutPage() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-2xl font-black">Customer & fulfillment</h2>
             {step === 3 && (
-              <button type="button" onClick={() => setStep(2)} className="focus-ring inline-flex items-center gap-2 rounded-full border border-pink-100 px-4 py-2 text-sm font-black text-boutique-pink">
+              <button type="button" onClick={() => goToStep(2)} className="focus-ring inline-flex items-center gap-2 rounded-full border border-pink-100 px-4 py-2 text-sm font-black text-boutique-pink">
                 <Pencil size={15} aria-hidden="true" />
                 Edit Info
               </button>
@@ -533,16 +558,27 @@ export function SquareCheckoutPage() {
             <span className="px-3">or</span>
             <span className="h-px flex-1 bg-pink-100" />
           </div>
-          <div id="square-afterpay-container" className="min-h-10" />
-          <button
-            type="button"
-            disabled={loading || !afterpayReady || step !== 3}
-            onClick={(event) => submitPayment(event, "afterpay_clearpay")}
-            className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-full border border-aqua-200 bg-aqua-50 px-5 py-3 font-black text-boutique-charcoal shadow-soft disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Sparkles size={18} aria-hidden="true" />
-            Afterpay/Clearpay
-          </button>
+          <div
+            id="square-afterpay-container"
+            role={afterpayReady && step === 3 ? "button" : undefined}
+            tabIndex={afterpayReady && step === 3 ? 0 : -1}
+            aria-label={afterpayReady ? "Pay with Afterpay or Clearpay" : "Afterpay or Clearpay is not available"}
+            onClick={(event) => {
+              if (afterpayReady && step === 3) void submitPayment(event as unknown as FormEvent, "afterpay_clearpay");
+            }}
+            onKeyDown={(event) => {
+              if ((event.key === "Enter" || event.key === " ") && afterpayReady && step === 3) {
+                event.preventDefault();
+                void submitPayment(event as unknown as FormEvent, "afterpay_clearpay");
+              }
+            }}
+            className="min-h-10 w-full overflow-hidden rounded-full"
+          />
+          {!afterpayReady && (
+            <p className="rounded-xl bg-zinc-50 p-3 text-xs font-bold text-boutique-charcoal/55">
+              Afterpay/Clearpay will appear here automatically when Square marks this cart as eligible.
+            </p>
+          )}
         </div>
 
         {message && (
@@ -553,8 +589,11 @@ export function SquareCheckoutPage() {
         )}
         {config && (
           <p className="mt-4 flex items-center gap-2 text-xs font-bold text-boutique-charcoal/55">
-            <CheckCircle2 size={15} aria-hidden="true" className="text-aqua-500" />
-            Square {config.environment} checkout ready.
+            <CheckCircle2
+              size={16}
+              aria-label="Secure checkout ready"
+              className={config.environment === "production" ? "text-emerald-500" : "text-orange-500"}
+            />
           </p>
         )}
       </aside>

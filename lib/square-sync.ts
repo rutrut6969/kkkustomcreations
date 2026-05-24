@@ -217,6 +217,7 @@ async function upsertSquareItem(object: SquareCatalogObject, imagesById = new Ma
   if (!name) return null;
   const firstVariation = item?.variations?.[0];
   const priceCents = firstVariation?.item_variation_data?.price_money?.amount ?? 0;
+  const tracksInventory = firstVariation?.item_variation_data?.track_inventory !== false;
   const squareCategoryId = item?.categories?.[0]?.id ?? item?.category_id;
   const category = await categoryForSquareId(squareCategoryId);
   if (!category) throw new Error(`Cannot import ${name}: no local category exists.`);
@@ -236,10 +237,11 @@ async function upsertSquareItem(object: SquareCatalogObject, imagesById = new Ma
     shortDescription: item?.description?.slice(0, 160) || null,
     priceCents,
     imageUrl: squareImageUrl ?? existing?.imageUrl ?? "/placeholder-product.svg",
-    stock: existing?.stock ?? 0,
+    stock: tracksInventory ? existing?.stock ?? 0 : existing?.stock ?? 0,
     categoryId: category.id,
     status: "ACTIVE" as const,
-    availability: existing?.availability ?? "IN_STOCK" as const,
+    availability: tracksInventory ? existing?.availability ?? "IN_STOCK" as const : "MADE_TO_ORDER" as const,
+    madeToOrder: !tracksInventory,
     squareCatalogId: object.id,
     squareVersion: version(object.version),
     squareUpdatedAt: asDate(object.updated_at),
@@ -452,7 +454,7 @@ export async function pushProductToSquare(productId: string) {
             item_id: product.squareCatalogId ?? `#kk_product_${product.id}`,
             name: variant.value || "Regular",
             sku: variant.sku ?? undefined,
-            track_inventory: true,
+            track_inventory: !product.madeToOrder && product.availability !== "MADE_TO_ORDER",
             price_money: {
               amount: (product.salePriceCents ?? product.priceCents) + variant.priceDeltaCents,
               currency: "USD"
@@ -523,6 +525,15 @@ export async function syncProductInventoryToSquare(productId: string) {
   const locationId = await activeLocationId();
   const product = await prisma.product.findUnique({ where: { id: productId }, include: { variants: true } });
   if (!product) throw new Error("Product not found.");
+  if (product.madeToOrder || product.availability === "MADE_TO_ORDER") {
+    const message = `Skipped Square inventory quantity sync for ${product.name}: product is always available / made to order.`;
+    await prisma.product.update({
+      where: { id: productId },
+      data: { inventorySyncStatus: SquareSyncStatus.SKIPPED, inventorySyncError: null, inventorySyncedAt: new Date() }
+    });
+    await writeSquareSyncLog("inventory.push", SquareSyncStatus.SKIPPED, message, { productId, mode: "always_available" });
+    return message;
+  }
   if (!product.variants.some((variant) => variant.squareCatalogId)) {
     const message = `Skipped Square inventory sync for ${product.name}: product is not linked to Square variations.`;
     await prisma.product.update({
