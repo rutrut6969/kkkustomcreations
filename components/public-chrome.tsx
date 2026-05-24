@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { SiteHeader } from "@/components/site-header";
 import { SocialProofPopup } from "@/components/social-proof-popup";
 import type { SocialProofView } from "@/lib/types";
+import { BrandLogo } from "@/components/brand-logo";
 
 export function PublicChrome({
   children,
@@ -29,7 +30,10 @@ export function PublicChrome({
       <footer className="mt-16 border-t border-pink-100 bg-white">
         <div className="container-page grid gap-8 py-10 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>
-            <p className="text-lg font-black">{settings.businessName ?? "K&K Kustom Kreations"}</p>
+            <div className="flex items-center gap-3">
+              <BrandLogo size="sm" />
+              <p className="text-lg font-black">{settings.businessName ?? "K&K Kustom Kreations"}</p>
+            </div>
             <p className="mt-3 max-w-md text-sm leading-6 text-boutique-charcoal/75">{settings.businessInfo}</p>
           </div>
           <div className="text-sm leading-7">

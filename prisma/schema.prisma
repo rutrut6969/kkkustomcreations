@@ -72,6 +72,27 @@ enum SquareSyncStatus {
   SKIPPED
 }
 
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  DEVELOPER
+  MANAGER
+  EMPLOYEE
+}
+
+enum AdminAccountStatus {
+  INVITED
+  ACTIVE
+  DISABLED
+}
+
+enum TrustedDeviceStatus {
+  PENDING
+  APPROVED
+  DENIED
+  REVOKED
+}
+
 model Category {
   id             String    @id @default(cuid())
   name           String    @unique
@@ -168,9 +189,13 @@ model Customer {
   country   String?  @default("US")
   marketingConsent Boolean @default(false)
   orderConsent     Boolean @default(false)
+  notes             String?
+  tags              String[] @default([])
   lastOrderAt      DateTime?
   totalSpentCents  Int     @default(0)
   orders    Order[]
+  archivedAt DateTime?
+  deletedAt  DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -331,4 +356,70 @@ model SquareSyncLog {
   message   String?
   metadata  Json?
   createdAt DateTime         @default(now())
+}
+
+model AdminUser {
+  id           String             @id @default(cuid())
+  email        String             @unique
+  name         String
+  role         AdminRole          @default(EMPLOYEE)
+  status       AdminAccountStatus @default(INVITED)
+  passwordHash String?
+  lastLoginAt  DateTime?
+  devices      TrustedDevice[]
+  invites      AdminInvite[]      @relation("InvitedBy")
+  auditLogs    AuditLog[]
+  pushSubscriptions AdminPushSubscription[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model AdminInvite {
+  id          String    @id @default(cuid())
+  email       String
+  role        AdminRole
+  tokenHash   String    @unique
+  invitedById String?
+  invitedBy   AdminUser? @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: SetNull)
+  acceptedAt  DateTime?
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+}
+
+model TrustedDevice {
+  id          String              @id @default(cuid())
+  adminUserId String?
+  adminUser   AdminUser?          @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  deviceHash  String              @unique
+  status      TrustedDeviceStatus @default(PENDING)
+  browser     String?
+  ipAddress   String?
+  location    String?
+  lastSeenAt  DateTime?
+  approvedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime            @default(now())
+}
+
+model AdminPushSubscription {
+  id          String    @id @default(cuid())
+  adminUserId String?
+  adminUser   AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  endpoint    String    @unique
+  p256dh      String
+  auth        String
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  actorId     String?
+  actor       AdminUser? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String?
+  entityId    String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
 }

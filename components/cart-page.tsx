@@ -254,7 +254,7 @@ export function CartPage() {
               name="consent"
               type="checkbox"
               required
-              className="mt-1 h-4 w-4 accent-boutique-pink"
+              className="mt-1 h-5 w-5 shrink-0 accent-boutique-pink"
             />
             <span>
               I consent to K&K Kustom Kreations contacting me about my order,
@@ -265,7 +265,7 @@ export function CartPage() {
             <input
               name="marketingConsent"
               type="checkbox"
-              className="mt-1 h-4 w-4 accent-boutique-pink"
+              className="mt-1 h-5 w-5 shrink-0 accent-boutique-pink"
             />
             <span>
               I would like to receive updates about new products, events, and

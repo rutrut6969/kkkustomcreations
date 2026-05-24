@@ -329,6 +329,57 @@ export async function permanentlyDeleteOrder(formData: FormData) {
   revalidatePath("/admin/orders");
 }
 
+export async function saveCustomerAdmin(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const id = String(formData.get("id") ?? "");
+  if (!id) return { ok: false, message: "Customer id is required." };
+  await (prisma.customer as any).update({
+    where: { id },
+    data: {
+      name: String(formData.get("name") ?? ""),
+      email: String(formData.get("email") ?? "") || null,
+      phone: String(formData.get("phone") ?? "") || null,
+      address1: String(formData.get("address1") ?? "") || null,
+      city: String(formData.get("city") ?? "") || null,
+      state: String(formData.get("state") ?? "") || null,
+      postalCode: String(formData.get("postalCode") ?? "") || null,
+      country: String(formData.get("country") ?? "US") || "US",
+      marketingConsent: formData.get("marketingConsent") === "on",
+      orderConsent: formData.get("orderConsent") === "on",
+      notes: String(formData.get("notes") ?? "") || null,
+      tags: parseTags(formData.get("tags"))
+    }
+  });
+  revalidatePath("/admin/customers");
+  return { ok: true, message: "Customer updated successfully." };
+}
+
+export async function archiveCustomer(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (hasDatabaseUrl() && id) await (prisma.customer as any).update({ where: { id }, data: { archivedAt: new Date() } });
+  revalidatePath("/admin/customers");
+}
+
+export async function restoreCustomer(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (hasDatabaseUrl() && id) await (prisma.customer as any).update({ where: { id }, data: { archivedAt: null, deletedAt: null } });
+  revalidatePath("/admin/customers");
+}
+
+export async function permanentlyDeleteCustomer(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const confirmDelete = formData.get("confirmDelete") === "on";
+  if (!hasDatabaseUrl() || !id) return;
+  const paidOrderCount = await prisma.order.count({ where: { customerId: id, paymentStatus: "PAID" } });
+  if (paidOrderCount > 0 && !confirmDelete) {
+    await (prisma.customer as any).update({ where: { id }, data: { archivedAt: new Date(), deletedAt: new Date() } });
+  } else {
+    await prisma.customer.delete({ where: { id } });
+  }
+  revalidatePath("/admin/customers");
+}
+
 export async function pushCategoryToSquareAction(_state: AdminState, formData: FormData): Promise<AdminState> {
   const noDb = requireDb();
   if (noDb) return noDb;

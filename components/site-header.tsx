@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { Menu, Sparkles, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { clsx } from "clsx";
 import { CartIndicator } from "@/components/cart-indicator";
+import { BrandLogo } from "@/components/brand-logo";
 
 const navItems = [
   ["Shop", "/shop"],
@@ -37,9 +38,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-pink-100 bg-white/95 backdrop-blur">
       <div className="container-page flex h-16 items-center justify-between gap-3">
         <Link href="/" className="flex min-w-0 items-center gap-2 font-black text-boutique-charcoal">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-aqua-100 text-boutique-pink shadow-soft">
-            <Sparkles size={20} aria-hidden="true" />
-          </span>
+          <BrandLogo size="sm" />
           <span className="min-w-0 truncate leading-tight">
             K&K <span className="max-[360px]:sr-only">Kustom Kreations</span>
           </span>

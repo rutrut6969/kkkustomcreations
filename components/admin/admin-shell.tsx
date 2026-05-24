@@ -22,13 +22,14 @@ import {
   Package,
   PieChart,
   Settings,
+  ShieldCheck,
   ShoppingCart,
-  Sparkles,
   Users,
   WandSparkles,
   X
 } from "lucide-react";
 import { logoutAdmin } from "@/app/admin/actions";
+import { BrandLogo } from "@/components/brand-logo";
 
 const navItems = [
   { label: "Dashboard", href: "/admin", icon: BarChart3 },
@@ -46,6 +47,7 @@ const navItems = [
   { label: "Homepage Settings", href: "/admin/homepage", icon: Home },
   { label: "Media Library", href: "/admin/media", icon: Image },
   { label: "Integrations", href: "/admin/integrations", icon: CreditCard },
+  { label: "Security", href: "/admin/security", icon: ShieldCheck },
   { label: "Site Settings", href: "/admin/settings", icon: Settings }
 ];
 
@@ -59,9 +61,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     <aside className="flex h-full w-72 flex-col border-r border-pink-100 bg-white">
       <div className="flex h-16 items-center justify-between border-b border-pink-100 px-4">
         <Link href="/admin" className="flex min-w-0 items-center gap-2 font-black">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-aqua-100 text-boutique-pink">
-            <Sparkles size={18} aria-hidden="true" />
-          </span>
+          <BrandLogo size="sm" />
           <span className="truncate">K&K Admin</span>
         </Link>
         <button

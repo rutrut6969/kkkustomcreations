@@ -23,3 +23,7 @@ The in-app browser pane became unavailable during the final QA pass, and local h
 ## Production Hardening Pass
 
 For the production hardening pass, `npm install`, `npm run lint`, `npm run typecheck`, `npm run prisma:deploy`, and `npx next build` completed successfully. Local screenshot capture was attempted against `next start`, but the local Windows sandbox could not maintain a reachable connection to the Prisma Postgres host long enough for valid screenshots. Connection-error screenshots were discarded to avoid confusing them with real UI captures.
+
+## Branding / Platform Continuation Pass
+
+The logo/favicon pack was installed under `public/` and wired through root metadata, manifest, header, footer, admin login, admin shell, and checkout. A second screenshot pass was attempted after the branding update, but local `next start` could not stay reachable from the Windows shell session. The code-level production checks passed, and deployment should serve the favicon and manifest assets directly from Vercel static assets.

@@ -88,6 +88,17 @@ export async function POST(request: Request) {
             }
           }
         });
+        const firstPurchased = parsed.data.items[0];
+        if (firstPurchased) {
+          await prisma.socialProofPurchase.create({
+            data: {
+              customerName: parsed.data.name.trim().split(/\s+/)[0] ?? "Someone",
+              productName: firstPurchased.name,
+              productId: firstPurchased.productId,
+              isSample: false
+            }
+          }).catch(() => undefined);
+        }
         localOrderId = order.id;
         await setSquareSetting("squareLastSuccessfulCheckout", new Date().toLocaleString());
         if (payment.status === "COMPLETED") {

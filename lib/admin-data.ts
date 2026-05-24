@@ -177,14 +177,16 @@ export async function getAdminMedia() {
 export async function getAdminCustomers(filter = "all") {
   const where =
     filter === "marketing"
-      ? { marketingConsent: true }
-      : filter === "repeat"
-        ? { orders: { some: {} } }
+      ? { marketingConsent: true, deletedAt: null }
+    : filter === "repeat"
+        ? { orders: { some: {} }, deletedAt: null }
         : filter === "high-value"
-          ? { totalSpentCents: { gte: 10000 } }
+          ? { totalSpentCents: { gte: 10000 }, deletedAt: null }
           : filter === "recent"
-            ? { lastOrderAt: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) } }
-            : {};
+            ? { lastOrderAt: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) }, deletedAt: null }
+            : filter === "archived"
+              ? { archivedAt: { not: null }, deletedAt: null }
+              : { archivedAt: null, deletedAt: null };
 
   return safe(
     () =>

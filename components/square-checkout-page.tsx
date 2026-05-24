@@ -483,11 +483,11 @@ export function SquareCheckoutPage() {
                 <textarea value={customer.notes} onChange={(event) => updateCustomer("notes", event.target.value)} rows={4} placeholder="Colors, name, pickup notes, or timing details" className="form-control" />
               </label>
               <label className="flex gap-3 text-sm leading-6">
-                <input checked={customer.consent} onChange={(event) => updateCustomer("consent", event.target.checked)} type="checkbox" required className="mt-1 h-4 w-4 accent-boutique-pink" />
+                <input checked={customer.consent} onChange={(event) => updateCustomer("consent", event.target.checked)} type="checkbox" required className="mt-1 h-5 w-5 shrink-0 accent-boutique-pink" />
                 <span>I consent to K&K Kustom Kreations contacting me about my order, custom request, pickup/dropoff, and related business updates.</span>
               </label>
               <label className="flex gap-3 text-sm leading-6">
-                <input checked={customer.marketingConsent} onChange={(event) => updateCustomer("marketingConsent", event.target.checked)} type="checkbox" className="mt-1 h-4 w-4 accent-boutique-pink" />
+                <input checked={customer.marketingConsent} onChange={(event) => updateCustomer("marketingConsent", event.target.checked)} type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-boutique-pink" />
                 <span>I would like to receive updates about new products, events, and promotions.</span>
               </label>
               <button type="button" onClick={continueToPayment} className="focus-ring w-full rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink sm:w-auto">
