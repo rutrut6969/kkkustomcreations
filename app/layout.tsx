@@ -4,8 +4,20 @@ import "./globals.css";
 import { getSettings, getSocialProofPurchases } from "@/lib/data";
 import { PublicChrome } from "@/components/public-chrome";
 
+function siteMetadataBase() {
+  const fallback = "https://kkkustomcreations.vercel.app";
+  const raw = (process.env.NEXT_PUBLIC_SITE_URL || fallback).trim();
+  const candidate = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+
+  try {
+    return new URL(candidate);
+  } catch {
+    return new URL(fallback);
+  }
+}
+
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://kkkustomcreations.vercel.app"),
+  metadataBase: siteMetadataBase(),
   title: "K&K Kustom Kreations",
   description: "Handmade custom cups, tumblers, pens, keychains, badge reels, wristlets, seasonal gifts, and boutique creations.",
   manifest: "/site.webmanifest",
