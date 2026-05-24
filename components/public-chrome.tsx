@@ -45,6 +45,12 @@ export function PublicChrome({
             <Link href="/admin" className="block hover:text-boutique-pink">Admin</Link>
           </div>
         </div>
+        <div className="border-t border-pink-50 py-3 text-center text-xs font-bold text-boutique-charcoal/45">
+          Powered by{" "}
+          <a href="https://obsidian-systems.tech" target="_blank" rel="noopener noreferrer" className="hover:text-boutique-pink">
+            Obsidian Systems LLC
+          </a>
+        </div>
       </footer>
       <SocialProofPopup purchases={socialProof} />
     </>
