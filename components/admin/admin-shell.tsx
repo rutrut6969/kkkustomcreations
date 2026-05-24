@@ -57,6 +57,10 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setOpen(false), [pathname]);
 
+  if (pathname === "/admin/login" || pathname.startsWith("/admin/invite/")) {
+    return <>{children}</>;
+  }
+
   const sidebar = (
     <aside className="flex h-full w-72 flex-col border-r border-pink-100 bg-white">
       <div className="flex h-16 items-center justify-between border-b border-pink-100 px-4">

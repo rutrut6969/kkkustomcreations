@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -10,6 +11,17 @@ import { verifyAdminCredentials } from "@/lib/admin-auth";
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { isUploadFile, uploadImageToBlob } from "@/lib/blob-upload";
+import {
+  ADMIN_ROLES,
+  adminInviteUrl,
+  bootstrapAdminUser,
+  createInviteToken,
+  hashPassword,
+  hashToken,
+  recordTrustedDevice,
+  sendInviteEmail,
+  writeAuditLog
+} from "@/lib/admin-security";
 import {
   archiveProductInSquare,
   importSquareOrders,
@@ -38,7 +50,32 @@ export async function loginAdmin(_state: AdminState, formData: FormData): Promis
   const next = String(formData.get("next") ?? "/admin");
   const ok = await verifyAdminCredentials(email, password);
   if (!ok) return { ok: false, message: "Invalid admin email or password." };
+  const headerStore = headers();
+  const userAgent = headerStore.get("user-agent") ?? "Unknown browser";
+  const ipAddress = headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ?? headerStore.get("x-real-ip") ?? "";
+  const normalizedEmail = email.trim().toLowerCase();
+  const envAdminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const adminUser =
+    normalizedEmail === envAdminEmail
+      ? await bootstrapAdminUser(email, "K&K Super Admin")
+      : hasDatabaseUrl()
+        ? await (prisma as any).adminUser.update({
+            where: { email: normalizedEmail },
+            data: { lastLoginAt: new Date() }
+          })
+        : null;
+  if (adminUser) {
+    await recordTrustedDevice({ adminUserId: adminUser.id, email, userAgent, ipAddress });
+    await writeAuditLog("admin.login", { actorId: adminUser.id, entityType: "AdminUser", entityId: adminUser.id, metadata: { bootstrap: normalizedEmail === envAdminEmail } });
+  }
   cookies().set("kk_admin_session", "authenticated", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 12
+  });
+  cookies().set("kk_admin_email", normalizedEmail, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -50,7 +87,123 @@ export async function loginAdmin(_state: AdminState, formData: FormData): Promis
 
 export async function logoutAdmin() {
   cookies().delete("kk_admin_session");
+  cookies().delete("kk_admin_email");
   redirect("/admin/login");
+}
+
+export async function inviteAdminUser(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const schema = z.object({
+    email: z.string().email(),
+    name: z.string().optional(),
+    role: z.enum(ADMIN_ROLES)
+  });
+  const parsed = schema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { ok: false, message: "Enter a valid email and role." };
+
+  const email = parsed.data.email.trim().toLowerCase();
+  const token = createInviteToken();
+  const url = adminInviteUrl(token);
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const actorEmail = cookies().get("kk_admin_email")?.value;
+  const actor = actorEmail ? await (prisma as any).adminUser.findUnique({ where: { email: actorEmail } }) : null;
+
+  await (prisma as any).adminUser.upsert({
+    where: { email },
+    create: {
+      email,
+      name: parsed.data.name?.trim() || email.split("@")[0],
+      role: parsed.data.role,
+      status: "INVITED"
+    },
+    update: {
+      name: parsed.data.name?.trim() || undefined,
+      role: parsed.data.role,
+      status: "INVITED"
+    }
+  });
+
+  await (prisma as any).adminInvite.create({
+    data: {
+      email,
+      role: parsed.data.role,
+      tokenHash: hashToken(token),
+      invitedById: actor?.id ?? null,
+      expiresAt
+    }
+  });
+
+  const emailResult = await sendInviteEmail(email, url, parsed.data.role);
+  await writeAuditLog("admin.invite.created", { actorId: actor?.id, entityType: "AdminInvite", metadata: { email, role: parsed.data.role, emailSent: emailResult.sent } });
+  revalidatePath("/admin/security");
+  return { ok: true, message: emailResult.message };
+}
+
+export async function acceptAdminInvite(_state: AdminState, formData: FormData): Promise<AdminState> {
+  const noDb = requireDb();
+  if (noDb) return noDb;
+  const token = String(formData.get("token") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  if (!token || !name || password.length < 10) return { ok: false, message: "Add your name and a password at least 10 characters long." };
+
+  const invite = await (prisma as any).adminInvite.findUnique({ where: { tokenHash: hashToken(token) } });
+  if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) return { ok: false, message: "This invite is invalid or expired." };
+
+  const passwordHash = await hashPassword(password);
+  const adminUser = await (prisma as any).adminUser.upsert({
+    where: { email: invite.email },
+    create: {
+      email: invite.email,
+      name,
+      role: invite.role,
+      status: "ACTIVE",
+      passwordHash,
+      lastLoginAt: new Date()
+    },
+    update: {
+      name,
+      role: invite.role,
+      status: "ACTIVE",
+      passwordHash,
+      lastLoginAt: new Date()
+    }
+  });
+  await (prisma as any).adminInvite.update({ where: { id: invite.id }, data: { acceptedAt: new Date() } });
+  await writeAuditLog("admin.invite.accepted", { actorId: adminUser.id, entityType: "AdminUser", entityId: adminUser.id });
+  cookies().set("kk_admin_session", "authenticated", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 12
+  });
+  cookies().set("kk_admin_email", invite.email, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 12
+  });
+  redirect("/admin");
+}
+
+export async function updateAdminUserStatus(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!hasDatabaseUrl() || !id || !["ACTIVE", "INVITED", "SUSPENDED", "DEACTIVATED"].includes(status)) return;
+  await (prisma as any).adminUser.update({ where: { id }, data: { status } });
+  await writeAuditLog("admin.user.status.updated", { entityType: "AdminUser", entityId: id, metadata: { status } });
+  revalidatePath("/admin/security");
+}
+
+export async function revokeTrustedDevice(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!hasDatabaseUrl() || !id) return;
+  await (prisma as any).trustedDevice.update({ where: { id }, data: { status: "REVOKED", revokedAt: new Date() } });
+  await writeAuditLog("admin.device.revoked", { entityType: "TrustedDevice", entityId: id });
+  revalidatePath("/admin/security");
 }
 
 export async function saveSettings(_state: AdminState, formData: FormData): Promise<AdminState> {
