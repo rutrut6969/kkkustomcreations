@@ -55,7 +55,7 @@ export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }
         setVisibleItems((existing) => existing.filter((item) => item.id !== next.id));
       }, 7200);
     };
-    const initial = window.setTimeout(show, 4500 + Math.random() * 4500);
+    const initial = window.setTimeout(show, 1800 + Math.random() * 2200);
     const interval = window.setInterval(show, 22000 + Math.random() * 10000);
     return () => {
       window.clearTimeout(initial);
