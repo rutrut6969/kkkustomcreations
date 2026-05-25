@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { parseQuickAddFilename, type QuickAddDraft } from "@/lib/quick-add";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 function authed(request: Request) {
   return request.headers.get("cookie")?.includes("kk_admin_session=authenticated");
@@ -25,6 +26,15 @@ function fallbackDraft(fileName: string): QuickAddDraft {
   };
 }
 
+function parseJsonObject(text?: string | null) {
+  if (!text) return {};
+  const cleaned = text.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return {};
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
 export async function POST(request: Request) {
   if (!authed(request)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const formData = await request.formData();
@@ -32,13 +42,15 @@ export async function POST(request: Request) {
   if (!(file instanceof File) || file.size === 0) return NextResponse.json({ error: "Upload a product image." }, { status: 400 });
 
   const draft = fallbackDraft(file.name);
-  if (!process.env.OPENAI_API_KEY) return NextResponse.json({ draft, usedAi: false });
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json({ draft, usedAi: false, aiStatus: "missing_key", warning: "OPENAI_API_KEY is not configured for this deployment." });
+  }
 
   try {
     const bytes = Buffer.from(await file.arrayBuffer());
     const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
     const response = await client.responses.create({
-      model: "gpt-4.1-mini",
+      model: process.env.OPENAI_QUICK_ADD_MODEL || "gpt-4o-mini",
       input: [
         {
           role: "user",
@@ -49,16 +61,39 @@ export async function POST(request: Request) {
             },
             {
               type: "input_image",
-              image_url: `data:${file.type};base64,${bytes.toString("base64")}`
+              image_url: `data:${file.type};base64,${bytes.toString("base64")}`,
+              detail: "low"
             }
           ]
         }
-      ]
+      ],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "quick_add_product",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              productTitle: { type: "string" },
+              shortDescription: { type: "string" },
+              description: { type: "string" },
+              tags: { type: "array", items: { type: "string" } },
+              metaDescription: { type: "string" },
+              imageAltText: { type: "string" },
+              suggestedCategory: { type: "string" },
+              suggestedAvailability: { type: "string", enum: ["IN_STOCK", "LOW_STOCK", "MADE_TO_ORDER", "OUT_OF_STOCK"] }
+            },
+            required: ["productTitle", "shortDescription", "description", "tags", "metaDescription", "imageAltText", "suggestedCategory", "suggestedAvailability"]
+          }
+        }
+      }
     } as any);
-    const text = response.output_text?.replace(/^```json\s*|\s*```$/g, "").trim();
-    const ai = text ? JSON.parse(text) : {};
+    const ai = parseJsonObject(response.output_text);
     return NextResponse.json({
       usedAi: true,
+      aiStatus: "used_ai",
       draft: {
         ...draft,
         ...ai,
@@ -68,6 +103,11 @@ export async function POST(request: Request) {
       }
     });
   } catch (error) {
-    return NextResponse.json({ draft, usedAi: false, warning: error instanceof Error ? error.message : "AI analysis failed; filename draft used." });
+    return NextResponse.json({
+      draft,
+      usedAi: false,
+      aiStatus: "ai_error",
+      warning: error instanceof Error ? error.message : "AI analysis failed; filename draft used."
+    });
   }
 }

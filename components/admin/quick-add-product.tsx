@@ -16,6 +16,13 @@ type QueueItem = {
   message?: string;
 };
 
+type AnalyzeResponse = {
+  draft: QuickAddDraft;
+  usedAi?: boolean;
+  aiStatus?: "used_ai" | "missing_key" | "ai_error";
+  warning?: string;
+};
+
 const emptyDraft: QuickAddDraft = {
   productTitle: "",
   suggestedCategory: "Custom Orders",
@@ -51,7 +58,7 @@ export function QuickAddProduct() {
     const response = await fetch("/api/admin/quick-add/analyze", { method: "POST", body: form });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error ?? "Could not analyze product.");
-    return data.draft as QuickAddDraft;
+    return data as AnalyzeResponse;
   }
 
   async function addFiles(files: FileList | File[]) {
@@ -73,8 +80,11 @@ export function QuickAddProduct() {
 
     for (const item of items) {
       try {
-        const draft = await analyzeFile(item);
-        setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, draft, status: "ready", message: "Ready to publish" } : entry));
+        const result = await analyzeFile(item);
+        const itemMessage = result.usedAi
+          ? "AI description generated. Review before publishing."
+          : result.warning || "Filename draft created. AI was not used.";
+        setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, draft: result.draft, status: "ready", message: itemMessage } : entry));
       } catch (error) {
         setQueue((current) => current.map((entry) => entry.id === item.id ? { ...entry, draft: emptyDraft, status: "error", message: error instanceof Error ? error.message : "Analysis failed" } : entry));
       }
