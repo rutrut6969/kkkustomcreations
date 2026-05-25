@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
+import { guardPublicSubmission } from "@/lib/anti-bot";
 
 const consentText = "Consent is required.";
 
@@ -21,6 +22,8 @@ export async function submitCustomOrder(_state: ActionState, formData: FormData)
   });
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: "Please complete the required fields." };
+  const guard = await guardPublicSubmission({ formType: "custom-order", formData, email: parsed.data.email, phone: parsed.data.phone });
+  if (!guard.ok) return { ok: guard.fakeSuccess, message: guard.fakeSuccess ? "Custom request sent. We will follow up soon." : guard.message };
   if (!hasDatabaseUrl()) return { ok: true, message: "Demo mode: your custom request form is ready. Connect DATABASE_URL to save submissions." };
 
   await prisma.customOrderRequest.create({
@@ -45,6 +48,8 @@ export async function submitContactMessage(_state: ActionState, formData: FormDa
   });
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, message: "Please complete the required fields." };
+  const guard = await guardPublicSubmission({ formType: "contact", formData, email: parsed.data.email, phone: parsed.data.phone });
+  if (!guard.ok) return { ok: guard.fakeSuccess, message: guard.fakeSuccess ? "Message sent. Thank you!" : guard.message };
   if (!hasDatabaseUrl()) return { ok: true, message: "Demo mode: your contact form is ready. Connect DATABASE_URL to save messages." };
 
   await prisma.contactMessage.create({

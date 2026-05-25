@@ -5,7 +5,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { CustomOrderStatus, OrderStatus, PaymentStatus } from "@prisma/client";
+import { CustomOrderStatus, OrderStatus, PaymentStatus, Prisma } from "@prisma/client";
 import { del } from "@vercel/blob";
 import { verifyAdminCredentials } from "@/lib/admin-auth";
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
@@ -252,6 +252,10 @@ function parseTags(value: FormDataEntryValue | null) {
     .split(",")
     .map((tag) => tag.trim())
     .filter(Boolean);
+}
+
+function isMissingRecord(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025";
 }
 
 export async function saveProduct(_state: AdminState, formData: FormData): Promise<AdminState> {
@@ -513,13 +517,21 @@ export async function saveCustomerAdmin(_state: AdminState, formData: FormData):
 
 export async function archiveCustomer(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  if (hasDatabaseUrl() && id) await (prisma.customer as any).update({ where: { id }, data: { archivedAt: new Date() } });
+  if (hasDatabaseUrl() && id) {
+    await (prisma.customer as any).update({ where: { id }, data: { archivedAt: new Date() } }).catch((error: unknown) => {
+      if (!isMissingRecord(error)) throw error;
+    });
+  }
   revalidatePath("/admin/customers");
 }
 
 export async function restoreCustomer(formData: FormData) {
   const id = String(formData.get("id") ?? "");
-  if (hasDatabaseUrl() && id) await (prisma.customer as any).update({ where: { id }, data: { archivedAt: null, deletedAt: null } });
+  if (hasDatabaseUrl() && id) {
+    await (prisma.customer as any).update({ where: { id }, data: { archivedAt: null, deletedAt: null } }).catch((error: unknown) => {
+      if (!isMissingRecord(error)) throw error;
+    });
+  }
   revalidatePath("/admin/customers");
 }
 
@@ -527,11 +539,83 @@ export async function permanentlyDeleteCustomer(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   const confirmDelete = formData.get("confirmDelete") === "on";
   if (!hasDatabaseUrl() || !id) return;
+  const customer = await (prisma.customer as any).findUnique({ where: { id }, include: { _count: { select: { orders: true } } } });
+  if (!customer) {
+    revalidatePath("/admin/customers");
+    return;
+  }
   const paidOrderCount = await prisma.order.count({ where: { customerId: id, paymentStatus: "PAID" } });
-  if (paidOrderCount > 0 && !confirmDelete) {
+  if (paidOrderCount > 0 || customer._count.orders > 0 || !confirmDelete) {
     await (prisma.customer as any).update({ where: { id }, data: { archivedAt: new Date(), deletedAt: new Date() } });
   } else {
-    await prisma.customer.delete({ where: { id } });
+    await prisma.customer.delete({ where: { id } }).catch((error: unknown) => {
+      if (!isMissingRecord(error)) throw error;
+    });
+  }
+  revalidatePath("/admin/customers");
+}
+
+export async function archiveEmptyCustomers() {
+  if (!hasDatabaseUrl()) return;
+  await (prisma.customer as any).updateMany({
+    where: {
+      deletedAt: null,
+      OR: [
+        { AND: [{ email: null }, { phone: null }] },
+        { AND: [{ email: "" }, { phone: "" }] },
+        { name: { in: ["Square customer", "Square order", "Unknown", "Customer"] } }
+      ]
+    },
+    data: { archivedAt: new Date(), deletedAt: new Date() }
+  });
+  revalidatePath("/admin/customers");
+}
+
+export async function mergeDuplicateCustomers() {
+  if (!hasDatabaseUrl()) return;
+  const customers = await (prisma.customer as any).findMany({
+    where: { deletedAt: null },
+    orderBy: [{ lastOrderAt: "desc" }, { updatedAt: "desc" }]
+  });
+  const groups = new Map<string, any[]>();
+  for (const customer of customers) {
+    const email = typeof customer.email === "string" ? customer.email.trim().toLowerCase() : "";
+    const phone = typeof customer.phone === "string" ? customer.phone.replace(/\D/g, "") : "";
+    const key = email ? `email:${email}` : phone ? `phone:${phone}` : "";
+    if (!key) continue;
+    groups.set(key, [...(groups.get(key) ?? []), customer]);
+  }
+  for (const duplicates of Array.from(groups.values())) {
+    if (duplicates.length < 2) continue;
+    const [primary, ...rest] = duplicates;
+    for (const duplicate of rest) {
+      await prisma.order.updateMany({ where: { customerId: duplicate.id }, data: { customerId: primary.id } });
+      await (prisma.customer as any).update({
+        where: { id: duplicate.id },
+        data: { archivedAt: new Date(), deletedAt: new Date() }
+      });
+    }
+  }
+  revalidatePath("/admin/customers");
+}
+
+export async function deleteArchivedEmptyCustomers() {
+  if (!hasDatabaseUrl()) return;
+  const customers = await (prisma.customer as any).findMany({
+    where: {
+      deletedAt: { not: null },
+      orders: { none: {} },
+      AND: [
+        { OR: [{ email: null }, { email: "" }] },
+        { OR: [{ phone: null }, { phone: "" }] }
+      ]
+    },
+    select: { id: true }
+  });
+  for (const customer of customers) {
+    await prisma.customer.delete({ where: { id: customer.id } }).catch((error: unknown) => {
+      if (!isMissingRecord(error)) throw error;
+    });
   }
   revalidatePath("/admin/customers");
 }

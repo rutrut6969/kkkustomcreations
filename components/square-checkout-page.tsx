@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { AlertCircle, CheckCircle2, CreditCard, Loader2, Lock, Pencil } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { clearCart, getCart, getCartSummary, type CartItem } from "@/lib/cart";
@@ -61,6 +62,7 @@ declare global {
         };
       };
     };
+    kkTurnstileCallback?: (token: string) => void;
   }
 }
 
@@ -148,7 +150,9 @@ export function SquareCheckoutPage() {
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [afterpayReady, setAfterpayReady] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [addressAutocompleteReady, setAddressAutocompleteReady] = useState(false);
+  const startedAt = useRef(Date.now());
   const cardRef = useRef<SquareCard | null>(null);
   const afterpayRef = useRef<SquareAfterpay | null>(null);
   const paymentsRef = useRef<ReturnType<NonNullable<typeof window.Square>["payments"]> | null>(null);
@@ -165,6 +169,13 @@ export function SquareCheckoutPage() {
     } catch {
       setCustomer(defaultCustomer);
     }
+  }, []);
+
+  useEffect(() => {
+    window.kkTurnstileCallback = (token: string) => setTurnstileToken(token);
+    return () => {
+      delete window.kkTurnstileCallback;
+    };
   }, []);
 
   useEffect(() => {
@@ -359,7 +370,10 @@ export function SquareCheckoutPage() {
           postalCode: customer.postalCode,
           notes: customer.notes,
           consent: customer.consent,
-          marketingConsent: customer.marketingConsent
+          marketingConsent: customer.marketingConsent,
+          kk_started_at: String(startedAt.current),
+          kk_website: "",
+          turnstileToken
         })
       });
       const data = await response.json();
@@ -386,6 +400,8 @@ export function SquareCheckoutPage() {
 
   return (
     <form onSubmit={(event) => submitPayment(event, "card")} className="grid gap-7 lg:grid-cols-[1fr_420px]">
+      <input type="text" name="kk_website" tabIndex={-1} autoComplete="off" className="hidden" aria-hidden="true" />
+      <input type="hidden" name="kk_started_at" value={startedAt.current} />
       <section className="space-y-5">
         <div className="grid gap-2 rounded-boutique border border-pink-100 bg-white p-4 shadow-soft sm:grid-cols-3">
           {["Cart Review", "Customer Info", "Payment"].map((label, index) => {
@@ -547,6 +563,12 @@ export function SquareCheckoutPage() {
 
         <div className={step === 3 ? "mt-5 grid gap-3" : "mt-5 grid gap-3 opacity-60"}>
           {step !== 3 && <p className="rounded-xl bg-boutique-blush p-3 text-sm font-bold text-boutique-charcoal">Complete customer info to unlock payment.</p>}
+          {process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY && (
+            <>
+              <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+              <div className="cf-turnstile overflow-hidden rounded-xl" data-sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY} data-callback="kkTurnstileCallback" />
+            </>
+          )}
           <div id="square-card-container" className="min-h-12 rounded-xl border border-pink-100 bg-white p-3" />
           <button disabled={loading || !ready || step !== 3} className="focus-ring inline-flex w-full items-center justify-center gap-2 rounded-full bg-boutique-pink px-5 py-3 font-black text-white shadow-pink disabled:cursor-not-allowed disabled:opacity-50">
             {loading ? <Loader2 size={18} aria-hidden="true" className="animate-spin" /> : <CreditCard size={18} aria-hidden="true" />}

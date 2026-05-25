@@ -326,6 +326,22 @@ model ContactMessage {
   createdAt        DateTime @default(now())
 }
 
+model SubmissionAttempt {
+  id        String   @id @default(cuid())
+  formType  String
+  ipAddress String
+  email     String?
+  phone     String?
+  accepted  Boolean  @default(false)
+  reason    String?
+  createdAt DateTime @default(now())
+
+  @@index([formType, createdAt])
+  @@index([ipAddress, createdAt])
+  @@index([email, createdAt])
+  @@index([phone, createdAt])
+}
+
 model SocialProofPurchase {
   id           String   @id @default(cuid())
   customerName String

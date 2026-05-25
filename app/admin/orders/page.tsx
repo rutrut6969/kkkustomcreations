@@ -53,7 +53,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
                 <div>
                   <h2 className="mb-2 font-black">Purchased products</h2>
                   <div className="space-y-2">
-                    {order.items.map((item) => (
+                    {order.items.map((item: any) => (
                       <div key={item.id} className="rounded-xl bg-zinc-50 p-3 text-sm">
                         <p className="font-black">{item.quantity} x {item.productName}</p>
                         <p>{formatMoney(item.totalCents)} {item.customizationNotes && `- ${item.customizationNotes}`}</p>

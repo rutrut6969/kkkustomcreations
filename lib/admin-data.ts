@@ -62,8 +62,8 @@ export async function getAdminMetrics() {
       prisma.contactMessage.count(),
       prisma.product.count({ where: { featured: true, deletedAt: null } }),
       prisma.product.count({ where: { availability: { in: ["LOW_STOCK", "OUT_OF_STOCK"] }, deletedAt: null } }),
-      prisma.customer.count(),
-      (prisma.customer as any).count({ where: { marketingConsent: true } })
+      prisma.customer.count({ where: { deletedAt: null } }),
+      (prisma.customer as any).count({ where: { marketingConsent: true, deletedAt: null } })
     ]);
     return {
       totalProducts,
@@ -149,7 +149,7 @@ export async function getAdminOrders(filter = "open") {
               : { archivedAt: null, deletedAt: null };
   return safe(
     () => prisma.order.findMany({ where, include: { items: true, customer: true }, orderBy: { createdAt: "desc" }, take: 50 }),
-    []
+    [] as any[]
   );
 }
 
@@ -186,6 +186,14 @@ export async function getAdminCustomers(filter = "all") {
             ? { lastOrderAt: { gte: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30) }, deletedAt: null }
             : filter === "archived"
               ? { archivedAt: { not: null }, deletedAt: null }
+              : filter === "imported"
+                ? {
+                    deletedAt: null,
+                    OR: [
+                      { name: { in: ["Square customer", "Square order"] } },
+                      { AND: [{ email: null }, { phone: null }] }
+                    ]
+                  }
               : { archivedAt: null, deletedAt: null };
 
   return safe(

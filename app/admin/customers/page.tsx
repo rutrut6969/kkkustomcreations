@@ -1,5 +1,13 @@
 import Link from "next/link";
-import { archiveCustomer, permanentlyDeleteCustomer, restoreCustomer, saveCustomerAdmin } from "@/app/admin/actions";
+import {
+  archiveCustomer,
+  archiveEmptyCustomers,
+  deleteArchivedEmptyCustomers,
+  mergeDuplicateCustomers,
+  permanentlyDeleteCustomer,
+  restoreCustomer,
+  saveCustomerAdmin
+} from "@/app/admin/actions";
 import { AdminForm } from "@/components/admin-form";
 import { AdminCard, AdminPageHeader, StatusPill } from "@/components/admin/admin-ui";
 import { getAdminCustomers } from "@/lib/admin-data";
@@ -13,6 +21,7 @@ const filters = [
   ["repeat", "Repeat buyers"],
   ["high-value", "High value"],
   ["recent", "Recent"],
+  ["imported", "Imported/empty"],
   ["archived", "Archived"]
 ];
 
@@ -41,6 +50,28 @@ export default async function AdminCustomersPage({ searchParams }: { searchParam
           </Link>
         </div>
       </AdminPageHeader>
+
+      <AdminCard className="mb-4">
+        <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <h2 className="font-black">Customer data hygiene</h2>
+            <p className="mt-1 text-sm font-bold text-boutique-charcoal/60">
+              Clean imported/empty Square records without breaking order history. Orders keep their customer snapshot even when a customer profile is archived.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <form action={archiveEmptyCustomers}>
+              <button className="w-full rounded-full bg-boutique-blush px-4 py-2 text-xs font-black text-boutique-pink">Archive empty</button>
+            </form>
+            <form action={mergeDuplicateCustomers}>
+              <button className="w-full rounded-full bg-aqua-50 px-4 py-2 text-xs font-black text-aqua-700">Merge duplicates</button>
+            </form>
+            <form action={deleteArchivedEmptyCustomers}>
+              <button className="w-full rounded-full bg-boutique-charcoal px-4 py-2 text-xs font-black text-white">Delete archived empty</button>
+            </form>
+          </div>
+        </div>
+      </AdminCard>
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
         {filters.map(([value, label]) => (

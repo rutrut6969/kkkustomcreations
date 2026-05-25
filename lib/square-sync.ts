@@ -4,6 +4,7 @@ import { Prisma, SquareSyncStatus } from "@prisma/client";
 import { prisma, hasDatabaseUrl } from "@/lib/prisma";
 import { slugify } from "@/lib/format";
 import { resolveLocationId, squareConfig } from "@/lib/square";
+import { hasUsableCustomerInfo } from "@/lib/anti-bot";
 
 type SquareCatalogObject = {
   type: string;
@@ -627,7 +628,12 @@ export async function importSquareOrders() {
       const totalCents = squareOrder.total_money?.amount ?? squareOrder.net_amount_due_money?.amount ?? 0;
       const existing = await prisma.order.findFirst({ where: { squareOrderId: squareOrder.id } });
       const customerModel = prisma.customer as any;
-      const existingCustomer = recipient.email_address || recipient.phone_number
+      const usableCustomerInfo = hasUsableCustomerInfo({
+        name: recipient.display_name,
+        email: recipient.email_address,
+        phone: recipient.phone_number
+      });
+      const existingCustomer = usableCustomerInfo && (recipient.email_address || recipient.phone_number)
         ? await customerModel.findFirst({
             where: {
               OR: [
@@ -637,40 +643,42 @@ export async function importSquareOrders() {
             }
           })
         : null;
-      const customer = existingCustomer
-        ? await customerModel.update({
-            where: { id: existingCustomer.id },
-            data: {
-              name: recipient.display_name || existingCustomer.name,
-              email: recipient.email_address || existingCustomer.email,
-              phone: recipient.phone_number || existingCustomer.phone,
-              address1: recipient.address?.address_line_1 || existingCustomer.address1,
-              city: recipient.address?.locality || existingCustomer.city,
-              state: recipient.address?.administrative_district_level_1 || existingCustomer.state,
-              postalCode: recipient.address?.postal_code || existingCustomer.postalCode,
-              country: "US",
-              lastOrderAt: asDate(squareOrder.created_at) ?? new Date(),
-              totalSpentCents: existing ? undefined : { increment: totalCents }
-            }
-          })
-        : await customerModel.create({
-            data: {
-              name: recipient.display_name || "Square customer",
-              email: recipient.email_address || null,
-              phone: recipient.phone_number || null,
-              address1: recipient.address?.address_line_1 || null,
-              city: recipient.address?.locality || null,
-              state: recipient.address?.administrative_district_level_1 || null,
-              postalCode: recipient.address?.postal_code || null,
-              country: "US",
-              lastOrderAt: asDate(squareOrder.created_at) ?? new Date(),
-              totalSpentCents: existing ? 0 : totalCents
-            }
-          });
+      const customer = usableCustomerInfo
+        ? existingCustomer
+          ? await customerModel.update({
+              where: { id: existingCustomer.id },
+              data: {
+                name: recipient.display_name || existingCustomer.name,
+                email: recipient.email_address || existingCustomer.email,
+                phone: recipient.phone_number || existingCustomer.phone,
+                address1: recipient.address?.address_line_1 || existingCustomer.address1,
+                city: recipient.address?.locality || existingCustomer.city,
+                state: recipient.address?.administrative_district_level_1 || existingCustomer.state,
+                postalCode: recipient.address?.postal_code || existingCustomer.postalCode,
+                country: "US",
+                lastOrderAt: asDate(squareOrder.created_at) ?? new Date(),
+                totalSpentCents: existing ? undefined : { increment: totalCents }
+              }
+            })
+          : await customerModel.create({
+              data: {
+                name: recipient.display_name || recipient.email_address || recipient.phone_number || "Square customer",
+                email: recipient.email_address || null,
+                phone: recipient.phone_number || null,
+                address1: recipient.address?.address_line_1 || null,
+                city: recipient.address?.locality || null,
+                state: recipient.address?.administrative_district_level_1 || null,
+                postalCode: recipient.address?.postal_code || null,
+                country: "US",
+                lastOrderAt: asDate(squareOrder.created_at) ?? new Date(),
+                totalSpentCents: existing ? 0 : totalCents
+              }
+            })
+        : null;
       const data = {
         orderNumber: existing?.orderNumber ?? `SQ-${squareOrder.id.slice(-8).toUpperCase()}`,
-        customerId: customer.id,
-        customerName: recipient.display_name || "Square customer",
+        customerId: customer?.id ?? null,
+        customerName: recipient.display_name || recipient.email_address || recipient.phone_number || "Square order",
         customerEmail: recipient.email_address || null,
         customerPhone: recipient.phone_number || null,
         fulfillmentType: mapFulfillment(squareOrder),
