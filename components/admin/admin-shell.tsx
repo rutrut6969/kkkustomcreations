@@ -62,8 +62,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   const sidebar = (
-    <aside className="flex h-full w-72 flex-col border-r border-pink-100 bg-white">
-      <div className="flex h-16 items-center justify-between border-b border-pink-100 px-4">
+    <aside className="flex h-full w-72 flex-col border-r border-pink-100 bg-white shadow-xl lg:shadow-none">
+      <div className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-pink-100 bg-white px-4">
         <Link href="/admin" className="flex min-w-0 items-center gap-2 font-black">
           <BrandLogo size="sm" />
           <span className="truncate">K&K Admin</span>
@@ -117,7 +117,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         {sidebar}
       </div>
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-pink-100 bg-white/95 px-4 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-pink-100 bg-white/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-6">
           <div className="flex items-center gap-3">
             <button
               type="button"
