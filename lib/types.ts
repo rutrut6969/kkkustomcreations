@@ -54,4 +54,5 @@ export type SocialProofView = {
   productSlug?: string;
   fallbackUrl?: string | null;
   isSample: boolean;
+  createdAt?: string;
 };

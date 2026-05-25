@@ -88,15 +88,15 @@ export async function POST(request: Request) {
             }
           }
         });
-        const firstPurchased = parsed.data.items[0];
-        if (firstPurchased) {
-          await prisma.socialProofPurchase.create({
-            data: {
+        const purchasedItems = parsed.data.items.filter((item) => item.productId);
+        if (purchasedItems.length) {
+          await prisma.socialProofPurchase.createMany({
+            data: purchasedItems.map((item) => ({
               customerName: parsed.data.name.trim().split(/\s+/)[0] ?? "Someone",
-              productName: firstPurchased.name,
-              productId: firstPurchased.productId,
+              productName: item.name,
+              productId: item.productId,
               isSample: false
-            }
+            }))
           }).catch(() => undefined);
         }
         localOrderId = order.id;

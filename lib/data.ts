@@ -132,13 +132,15 @@ export async function getSocialProofPurchases() {
         productName: purchase.product?.name ?? purchase.productName,
         productSlug: purchase.product?.slug,
         fallbackUrl: `/shop?category=${purchase.product?.category.slug}`,
-        isSample: purchase.isSample
+        isSample: purchase.isSample,
+        createdAt: purchase.createdAt.toISOString()
       }));
     }
 
     const activeProducts = await prisma.product.findMany({
       where: {
         status: "ACTIVE",
+        archivedAt: null,
         deletedAt: null,
         availability: { in: ["IN_STOCK", "LOW_STOCK", "MADE_TO_ORDER"] }
       },
@@ -153,7 +155,8 @@ export async function getSocialProofPurchases() {
       productName: product.name,
       productSlug: product.slug,
       fallbackUrl: `/shop?category=${product.category.slug}`,
-      isSample: true
+      isSample: true,
+      createdAt: new Date(Date.now() - index * 60_000).toISOString()
     }));
   } catch (error) {
     console.warn("Database query failed; returning empty social proof:", error);

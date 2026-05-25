@@ -6,8 +6,43 @@ import { Sparkles } from "lucide-react";
 import type { SocialProofView } from "@/lib/types";
 
 export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }) {
+  const [liveItems, setLiveItems] = useState<SocialProofView[]>(purchases);
   const [visibleItems, setVisibleItems] = useState<SocialProofView[]>([]);
-  const items = useMemo(() => purchases.filter(Boolean), [purchases]);
+  const items = useMemo(() => liveItems.filter((item) => item.productSlug), [liveItems]);
+
+  useEffect(() => {
+    setLiveItems(purchases);
+  }, [purchases]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function refresh() {
+      try {
+        const response = await fetch("/api/social-proof", { cache: "no-store" });
+        if (!response.ok) return;
+        const data = await response.json();
+        const nextItems = Array.isArray(data.purchases) ? data.purchases.filter((item: SocialProofView) => item.productSlug) : [];
+        if (!nextItems.length || cancelled) return;
+        setLiveItems((existing) => {
+          const existingIds = new Set(existing.map((item) => item.id));
+          const newRealItems = nextItems.filter((item: SocialProofView) => !item.isSample && !existingIds.has(item.id));
+          if (newRealItems.length) {
+            setVisibleItems((visible) => [...newRealItems, ...visible].slice(0, 3));
+          }
+          const merged = [...newRealItems, ...nextItems, ...existing];
+          return Array.from(new Map(merged.map((item) => [item.id, item])).values()).slice(0, 16);
+        });
+      } catch {
+        // Social proof should never interrupt browsing.
+      }
+    }
+    void refresh();
+    const interval = window.setInterval(refresh, 20_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     if (!items.length) return;
@@ -45,7 +80,7 @@ export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }
               <Sparkles size={18} />
             </span>
             <span>
-              <span className="font-black">{item.customerName}</span> just purchased a{" "}
+              <span className="font-black">{item.customerName}</span> purchased{" "}
               <span className="font-black text-boutique-pink">{item.productName}</span>.
               {item.isSample && <span className="block text-xs text-boutique-charcoal/55">Popular item</span>}
             </span>
