@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import type { SocialProofView } from "@/lib/types";
@@ -9,6 +9,7 @@ export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }
   const [liveItems, setLiveItems] = useState<SocialProofView[]>(purchases);
   const [visibleItems, setVisibleItems] = useState<SocialProofView[]>([]);
   const items = useMemo(() => liveItems.filter((item) => item.productSlug), [liveItems]);
+  const lastProductSlugRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     setLiveItems(purchases);
@@ -48,8 +49,11 @@ export function SocialProofPopup({ purchases }: { purchases: SocialProofView[] }
     if (!items.length) return;
     let current = Math.floor(Math.random() * items.length);
     const show = () => {
-      current = (current + 1 + Math.floor(Math.random() * Math.max(1, items.length - 1))) % items.length;
-      const next = items[current];
+      const alternatives = items.filter((item) => item.productSlug !== lastProductSlugRef.current);
+      const selectable = alternatives.length ? alternatives : items;
+      current = (current + 1 + Math.floor(Math.random() * Math.max(1, selectable.length))) % selectable.length;
+      const next = selectable[current];
+      lastProductSlugRef.current = next.productSlug;
       setVisibleItems((existing) => [next, ...existing.filter((item) => item.id !== next.id)].slice(0, 3));
       window.setTimeout(() => {
         setVisibleItems((existing) => existing.filter((item) => item.id !== next.id));

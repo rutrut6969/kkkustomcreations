@@ -18,6 +18,22 @@ const defaultSettings: Record<string, string> = {
   customOrdersEnabled: "true"
 };
 
+const socialProofNames = [
+  "Avery", "Morgan", "Taylor", "Jordan", "Riley", "Casey", "Jamie", "Alex",
+  "Bailey", "Cameron", "Quinn", "Reese", "Parker", "Skylar", "Kendall", "Harper",
+  "Emerson", "Rowan", "Finley", "Dakota", "Sage", "Kennedy", "Peyton", "Reagan",
+  "Addison", "Brooklyn", "Savannah", "Madison", "Lillian", "Natalie", "Gabriella", "Autumn",
+  "Bella", "Chloe", "Maya", "Nora", "Luna", "Stella", "Willow", "Hazel",
+  "Ivy", "Ruby", "Clara", "Elena", "Sienna", "Naomi", "Ariana", "Leah",
+  "Jasmine", "Mia", "Layla", "Kinsley", "Paisley", "Brianna", "Alyssa", "Hailey",
+  "Mackenzie", "Kayla", "Jocelyn", "Isabelle", "Vanessa", "Marissa", "Daniela", "Tessa",
+  "Haley", "Lauren", "Amber", "Chelsea", "Kaitlyn", "Erica", "Monica", "Brooke",
+  "Ashley", "Brittany", "Courtney", "Melissa", "Nicole", "Crystal", "Stephanie", "Victoria",
+  "Olivia", "Sophia", "Amelia", "Evelyn", "Charlotte", "Abigail", "Emily", "Elizabeth",
+  "Grace", "Hannah", "Sarah", "Audrey", "Claire", "Caroline", "Allison", "Kelsey",
+  "Megan", "Whitney", "Jenna", "Paige"
+];
+
 function isProductionBuildPhase() {
   return process.env.NEXT_PHASE === "phase-production-build";
 }
@@ -148,16 +164,20 @@ export async function getSocialProofPurchases() {
       orderBy: [{ featured: "desc" }, { updatedAt: "desc" }],
       take: 8
     });
-    const names = ["Avery", "Morgan", "Taylor", "Jordan", "Riley", "Casey", "Jamie", "Alex"];
-    return activeProducts.map((product, index) => ({
-      id: `generated-${product.id}`,
-      customerName: names[index % names.length],
-      productName: product.name,
-      productSlug: product.slug,
-      fallbackUrl: `/shop?category=${product.category.slug}`,
-      isSample: true,
-      createdAt: new Date(Date.now() - index * 60_000).toISOString()
-    }));
+    return activeProducts.flatMap((product, productIndex) =>
+      [0, 1, 2].map((cycle) => {
+        const index = productIndex * 3 + cycle;
+        return {
+          id: `generated-${product.id}-${cycle}`,
+          customerName: socialProofNames[index % socialProofNames.length],
+          productName: product.name,
+          productSlug: product.slug,
+          fallbackUrl: `/shop?category=${product.category.slug}`,
+          isSample: true,
+          createdAt: new Date(Date.now() - index * 60_000).toISOString()
+        };
+      })
+    );
   } catch (error) {
     console.warn("Database query failed; returning empty social proof:", error);
     return [] as SocialProofView[];
