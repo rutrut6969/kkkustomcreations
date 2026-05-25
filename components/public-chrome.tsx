@@ -26,7 +26,7 @@ export function PublicChrome({
   return (
     <>
       <SiteHeader />
-      <main>{children}</main>
+      <main className="pt-16 md:pt-0">{children}</main>
       <footer className="mt-16 border-t border-pink-100 bg-white">
         <div className="container-page grid gap-8 py-10 md:grid-cols-[1.4fr_1fr_1fr]">
           <div>

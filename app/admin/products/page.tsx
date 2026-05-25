@@ -178,10 +178,23 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         ))}
       </div>
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <AdminForm action={saveProduct} submitLabel="Create product">
-          <h2 className="font-black">New product</h2>
-          <ProductFields categories={categories} />
-        </AdminForm>
+        <AdminCard className="h-fit p-0">
+          <details className="group">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 p-4">
+              <div>
+                <h2 className="font-black">New product</h2>
+                <p className="mt-1 text-sm font-bold text-boutique-charcoal/55">Tap to add a new catalog item.</p>
+              </div>
+              <span className="rounded-full bg-boutique-pink px-4 py-2 text-xs font-black text-white shadow-pink group-open:hidden">Open</span>
+              <span className="hidden rounded-full bg-zinc-100 px-4 py-2 text-xs font-black text-boutique-charcoal group-open:inline-flex">Close</span>
+            </summary>
+            <div className="border-t border-pink-100 p-4">
+              <AdminForm action={saveProduct} submitLabel="Create product">
+                <ProductFields categories={categories} />
+              </AdminForm>
+            </div>
+          </details>
+        </AdminCard>
 
         <div className="space-y-3">
           {products.map((product) => (

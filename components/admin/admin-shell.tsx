@@ -117,7 +117,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         {sidebar}
       </div>
       <div className="lg:pl-72">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-pink-100 bg-white/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-6">
+        <header className="fixed inset-x-0 top-0 z-40 flex h-16 items-center justify-between border-b border-pink-100 bg-white/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85 sm:px-6 lg:sticky lg:inset-x-auto">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -137,7 +137,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             View Cart
           </Link>
         </header>
-        <main className="mx-auto max-w-7xl overflow-x-hidden px-3 py-5 sm:px-6 lg:px-8">{children}</main>
+        <main className="mx-auto max-w-7xl overflow-x-hidden px-3 pb-5 pt-20 sm:px-6 lg:px-8 lg:pt-5">{children}</main>
       </div>
     </div>
   );
