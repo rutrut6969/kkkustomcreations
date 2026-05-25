@@ -36,7 +36,16 @@ export const metadata: Metadata = {
   openGraph: {
     title: "K&K Kustom Kreations",
     description: "Handmade boutique crafts, custom sparkle, vendor-market favorites, and Square-powered checkout.",
-    images: [{ url: "/logo-1024.png", width: 1024, height: 1024, alt: "K&K Kustom Kreations logo" }]
+    type: "website",
+    url: "/",
+    siteName: "K&K Kustom Kreations",
+    images: [{ url: "/social-preview.png", width: 1200, height: 630, alt: "K&K Kustom Kreations homepage preview" }]
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "K&K Kustom Kreations",
+    description: "Handmade boutique crafts, custom sparkle, vendor-market favorites, and Square-powered checkout.",
+    images: ["/social-preview.png"]
   }
 };
 
