@@ -84,19 +84,44 @@ textarea {
   appearance: none;
 }
 
-@keyframes social-proof-in {
-  from {
+@keyframes social-proof-bottom-cycle {
+  0% {
     opacity: 0;
-    transform: translateY(14px) scale(0.98);
+    transform: translateY(110%) scale(0.97);
   }
-  to {
+  14%,
+  82% {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+  100% {
+    opacity: 0;
+    transform: translateY(115%) scale(0.98);
+  }
 }
 
-.social-proof-enter {
-  animation: social-proof-in 220ms ease-out both;
+@keyframes social-proof-queue-cycle {
+  0% {
+    opacity: 0;
+    transform: translateY(110%) scale(0.97);
+  }
+  14%,
+  76% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-120%) scale(0.98);
+  }
+}
+
+.social-proof-bottom-cycle {
+  animation: social-proof-bottom-cycle 7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.social-proof-queue-cycle {
+  animation: social-proof-queue-cycle 7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes cart-indicator-pulse {
