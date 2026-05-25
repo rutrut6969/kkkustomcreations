@@ -2,10 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CreditCard, ExternalLink, Minus, Plus, Trash2 } from "lucide-react";
+import { CreditCard, Minus, Plus, Trash2 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
-  clearCart,
   getCart,
   getCartSummary,
   notifyCartUpdated,
@@ -16,7 +15,6 @@ import { formatMoney } from "@/lib/format";
 
 export function CartPage() {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const subtotal = useMemo(() => getCartSummary(items).subtotalCents, [items]);
 
   useEffect(() => setItems(getCart()), []);
@@ -25,36 +23,6 @@ export function CartPage() {
     setItems(itemsNext);
     saveCart(itemsNext);
     notifyCartUpdated();
-  }
-
-  async function checkout(formData: FormData) {
-    setLoading(true);
-    const response = await fetch("/api/checkout", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items,
-        fulfillmentType: formData.get("fulfillmentType"),
-        name: formData.get("name"),
-        email: formData.get("email"),
-        phone: formData.get("phone"),
-        address1: formData.get("address1"),
-        city: formData.get("city"),
-        state: formData.get("state"),
-        postalCode: formData.get("postalCode"),
-        notes: formData.get("notes"),
-        consent: formData.get("consent") === "on",
-        marketingConsent: formData.get("marketingConsent") === "on",
-      }),
-    });
-    const data = await response.json();
-    setLoading(false);
-    if (!response.ok) {
-      alert(data.error ?? "Checkout could not be started.");
-      return;
-    }
-    clearCart();
-    window.location.href = data.url;
   }
 
   return (
@@ -153,125 +121,16 @@ export function CartPage() {
         ))}
       </div>
 
-      <form
-        action={checkout}
-        className="h-fit rounded-boutique border border-pink-100 bg-white p-5 shadow-pink"
-      >
-        <h2 className="text-2xl font-black">Checkout details</h2>
+      <aside className="h-fit rounded-boutique border border-pink-100 bg-white p-5 shadow-pink">
+        <h2 className="text-2xl font-black">Order summary</h2>
         <div className="mt-4 flex items-center justify-between border-b border-pink-100 pb-4">
           <span className="font-bold">Subtotal</span>
           <span className="text-xl font-black">{formatMoney(subtotal)}</span>
         </div>
         <div className="mt-5 grid gap-3">
-          <label className="form-label">
-            Fulfillment
-            <select name="fulfillmentType" required className="form-control">
-              <option value="SHIPPING">Shipping</option>
-              <option value="PICKUP">Local pickup</option>
-              <option value="DROPOFF">Local dropoff</option>
-            </select>
-          </label>
-          <label className="form-label">
-            Name
-            <input
-              name="name"
-              required
-              autoComplete="name"
-              placeholder="Jane Smith"
-              className="form-control"
-            />
-          </label>
-          <label className="form-label">
-            Email
-            <input
-              name="email"
-              type="email"
-              required
-              autoComplete="email"
-              placeholder="jane@example.com"
-              className="form-control"
-            />
-          </label>
-          <label className="form-label">
-            Phone
-            <input
-              name="phone"
-              required
-              autoComplete="tel"
-              placeholder="555-123-4567"
-              className="form-control"
-            />
-          </label>
-          <label className="form-label">
-            Address for shipping/dropoff
-            <input
-              name="address1"
-              autoComplete="street-address"
-              placeholder="Street address"
-              className="form-control"
-            />
-          </label>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className="form-label">
-              City
-              <input
-                name="city"
-                autoComplete="address-level2"
-                placeholder="City"
-                className="form-control"
-              />
-            </label>
-            <label className="form-label">
-              State
-              <input
-                name="state"
-                autoComplete="address-level1"
-                placeholder="State"
-                className="form-control"
-              />
-            </label>
-            <label className="form-label">
-              ZIP
-              <input
-                name="postalCode"
-                autoComplete="postal-code"
-                placeholder="ZIP"
-                className="form-control"
-              />
-            </label>
-          </div>
-          <label className="form-label">
-            Notes or customization details
-            <textarea
-              name="notes"
-              rows={4}
-              placeholder="Colors, name, pickup notes, or timing details"
-              className="form-control"
-            />
-          </label>
-          <label className="flex gap-3 text-sm leading-6">
-            <input
-              name="consent"
-              type="checkbox"
-              required
-              className="mt-1 h-5 w-5 shrink-0 accent-boutique-pink"
-            />
-            <span>
-              I consent to K&K Kustom Kreations contacting me about my order,
-              custom request, pickup/dropoff, and related business updates.
-            </span>
-          </label>
-          <label className="flex gap-3 text-sm leading-6">
-            <input
-              name="marketingConsent"
-              type="checkbox"
-              className="mt-1 h-5 w-5 shrink-0 accent-boutique-pink"
-            />
-            <span>
-              I would like to receive updates about new products, events, and
-              promotions.
-            </span>
-          </label>
+          <p className="rounded-2xl bg-aqua-50 p-3 text-sm font-bold leading-6 text-boutique-charcoal/70">
+            Customer info, fulfillment, consent, and payment are collected once on the secure checkout screen.
+          </p>
           <Link
             href="/checkout"
             aria-disabled={items.length === 0}
@@ -280,12 +139,8 @@ export function CartPage() {
             <CreditCard size={18} aria-hidden="true" />
             Pay Now!
           </Link>
-          {/*          <button disabled={loading || items.length === 0} className="focus-ring inline-flex items-center justify-center gap-2 rounded-full border border-pink-100 bg-white px-5 py-3 font-black text-boutique-charcoal shadow-soft disabled:cursor-not-allowed disabled:opacity-50">
-            <ExternalLink size={18} aria-hidden="true" />
-            {loading ? "Starting Square hosted checkout..." : "Use Square hosted checkout"}
-          </button>*/}
         </div>
-      </form>
+      </aside>
     </div>
   );
 }
