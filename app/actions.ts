@@ -11,11 +11,11 @@ export type ActionState = { ok?: boolean; message?: string };
 
 export async function submitCustomOrder(_state: ActionState, formData: FormData): Promise<ActionState> {
   const schema = z.object({
-    name: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().min(7),
-    itemType: z.string().min(1),
-    designRequest: z.string().min(10),
+    name: z.string().trim().min(2),
+    email: z.string().trim().toLowerCase().email(),
+    phone: z.string().trim().min(7),
+    itemType: z.string().trim().min(1),
+    designRequest: z.string().trim().min(10),
     neededBy: z.string().optional(),
     imageNote: z.string().optional(),
     consent: z.literal("on", { errorMap: () => ({ message: consentText }) })
@@ -39,10 +39,10 @@ export async function submitCustomOrder(_state: ActionState, formData: FormData)
 
 export async function submitContactMessage(_state: ActionState, formData: FormData): Promise<ActionState> {
   const schema = z.object({
-    name: z.string().min(1),
-    email: z.string().email(),
-    phone: z.string().optional(),
-    message: z.string().min(5),
+    name: z.string().trim().min(2),
+    email: z.string().trim().toLowerCase().email(),
+    phone: z.string().trim().optional(),
+    message: z.string().trim().min(5),
     consent: z.literal("on", { errorMap: () => ({ message: consentText }) }),
     marketingConsent: z.string().optional()
   });

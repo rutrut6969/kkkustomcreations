@@ -220,6 +220,13 @@ export async function saveSettings(_state: AdminState, formData: FormData): Prom
     "shippingText",
     "pickupText",
     "dropoffText",
+    "shippingEnabled",
+    "flatShippingRate",
+    "freeShippingThreshold",
+    "localPickupEnabled",
+    "localDropoffEnabled",
+    "localDropoffFee",
+    "shippingCheckoutMessage",
     "customOrdersEnabled"
   ];
   const submittedKeys = String(formData.get("settingsKeys") ?? "")
@@ -231,8 +238,17 @@ export async function saveSettings(_state: AdminState, formData: FormData): Prom
     keysToSave.map((key) =>
       prisma.siteSetting.upsert({
         where: { key },
-        create: { key, value: key === "customOrdersEnabled" ? String(formData.has(key)) : String(formData.get(key) ?? "") },
-        update: { value: key === "customOrdersEnabled" ? String(formData.has(key)) : String(formData.get(key) ?? "") }
+        create: {
+          key,
+          value: ["customOrdersEnabled", "shippingEnabled", "localPickupEnabled", "localDropoffEnabled"].includes(key)
+            ? String(formData.has(key))
+            : String(formData.get(key) ?? "")
+        },
+        update: {
+          value: ["customOrdersEnabled", "shippingEnabled", "localPickupEnabled", "localDropoffEnabled"].includes(key)
+            ? String(formData.has(key))
+            : String(formData.get(key) ?? "")
+        }
       })
     )
   );

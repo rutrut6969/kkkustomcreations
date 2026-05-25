@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { FulfillmentType, OrderStatus, PaymentStatus, SquareSyncStatus } from "@prisma/client";
-import { createSquarePayment, parseDirectPaymentPayload } from "@/lib/square";
+import { calculateServerCheckoutTotals, createSquarePayment, parseDirectPaymentPayload } from "@/lib/square";
 import { hasDatabaseUrl, prisma } from "@/lib/prisma";
 import { adjustInventoryForPaidOrder } from "@/lib/inventory";
 import { setSquareSetting, writeSquareSyncLog } from "@/lib/square-sync";
@@ -34,6 +34,18 @@ export async function POST(request: Request) {
   if (!hasUsableCustomerInfo({ name: parsed.data.name, email: parsed.data.email, phone: parsed.data.phone })) {
     return NextResponse.json({ error: "Please enter valid customer contact information." }, { status: 400 });
   }
+  let totals;
+  try {
+    totals = await calculateServerCheckoutTotals(parsed.data);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Fulfillment settings are not available." }, { status: 400 });
+  }
+  if (parsed.data.checkoutSessionId && hasDatabaseUrl()) {
+    const existingOrder = await prisma.order.findUnique({ where: { idempotencyKey: parsed.data.checkoutSessionId } });
+    if (existingOrder?.squarePaymentId) {
+      return NextResponse.json({ paymentId: existingOrder.squarePaymentId, localOrderId: existingOrder.id, status: existingOrder.paymentStatus });
+    }
+  }
   const inventoryError = await validateCheckoutInventory(parsed.data.items);
   if (inventoryError) {
     return NextResponse.json({ error: inventoryError }, { status: 409 });
@@ -41,7 +53,7 @@ export async function POST(request: Request) {
 
   try {
     const payment = await createSquarePayment(parsed.data);
-    const totalCents = parsed.data.items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+    const totalCents = totals.totalCents;
     let localOrderId: string | null = null;
 
     if (hasDatabaseUrl()) {
@@ -71,7 +83,7 @@ export async function POST(request: Request) {
           : await customerModel.create({
               data: { ...customerData, totalSpentCents: totalCents }
             });
-        const order = await prisma.order.create({
+        const order = await (prisma.order as any).create({
           data: {
             orderNumber: orderNumber(),
             customerId: customer.id,
@@ -81,7 +93,9 @@ export async function POST(request: Request) {
             fulfillmentType: parsed.data.fulfillmentType as FulfillmentType,
             paymentStatus: payment.status === "COMPLETED" ? PaymentStatus.PAID : PaymentStatus.PENDING,
             status: payment.status === "COMPLETED" ? OrderStatus.PAID : OrderStatus.PENDING,
-            subtotalCents: totalCents,
+            subtotalCents: totals.subtotalCents,
+            shippingCents: totals.shippingCents,
+            taxCents: totals.taxCents,
             totalCents,
             notes: parsed.data.notes || null,
             squareOrderId: payment.order_id || null,
@@ -90,8 +104,10 @@ export async function POST(request: Request) {
             city: parsed.data.city || null,
             state: parsed.data.state || null,
             postalCode: parsed.data.postalCode || null,
+            shippingStatus: parsed.data.fulfillmentType === "SHIPPING" ? "PENDING" : "NOT_REQUIRED",
+            idempotencyKey: parsed.data.checkoutSessionId || null,
             items: {
-              create: parsed.data.items.map((item) => ({
+              create: parsed.data.items.map((item: { productId: string; name: string; priceCents: number; quantity: number }) => ({
                 productId: item.productId,
                 productName: item.name,
                 quantity: item.quantity,
@@ -102,10 +118,10 @@ export async function POST(request: Request) {
             }
           }
         });
-        const purchasedItems = parsed.data.items.filter((item) => item.productId);
+        const purchasedItems = parsed.data.items.filter((item: { productId: string }) => item.productId);
         if (purchasedItems.length) {
           await prisma.socialProofPurchase.createMany({
-            data: purchasedItems.map((item) => ({
+            data: purchasedItems.map((item: { productId: string; name: string }) => ({
               customerName: parsed.data.name.trim().split(/\s+/)[0] ?? "Someone",
               productName: item.name,
               productId: item.productId,

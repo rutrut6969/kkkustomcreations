@@ -15,6 +15,13 @@ const defaultSettings: Record<string, string> = {
   shippingText: "",
   pickupText: "",
   dropoffText: "",
+  shippingEnabled: "true",
+  flatShippingRate: "6.00",
+  freeShippingThreshold: "",
+  localPickupEnabled: "true",
+  localDropoffEnabled: "false",
+  localDropoffFee: "",
+  shippingCheckoutMessage: "Orders are typically shipped within 2-5 business days.",
   customOrdersEnabled: "true"
 };
 

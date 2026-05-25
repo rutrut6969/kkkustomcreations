@@ -65,6 +65,12 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams?:
                     <p className="font-black">Customer info</p>
                     <p>{order.customerEmail ?? "No email"} - {order.customerPhone ?? "No phone"}</p>
                     <p>{[order.address1, order.city, order.state, order.postalCode].filter(Boolean).join(", ") || "No address on file"}</p>
+                    <div className="mt-3 grid gap-2 rounded-xl bg-white/70 p-3 sm:grid-cols-2">
+                      <p><span className="font-black">Subtotal:</span> {formatMoney(order.subtotalCents)}</p>
+                      <p><span className="font-black">Shipping/fee:</span> {formatMoney((order as any).shippingCents ?? 0)}</p>
+                      <p><span className="font-black">Tax:</span> {formatMoney((order as any).taxCents ?? 0)}</p>
+                      <p><span className="font-black">Shipping status:</span> {(order as any).shippingStatus ?? "Not recorded"}</p>
+                    </div>
                     {order.notes && <p className="mt-2">{order.notes}</p>}
                     {order.syncError && <p className="mt-2 font-bold text-boutique-pink">Square sync error: {order.syncError}</p>}
                     {order.inventoryAdjustmentError && <p className="mt-2 font-bold text-boutique-pink">Inventory sync error: {order.inventoryAdjustmentError}</p>}

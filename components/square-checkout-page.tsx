@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle2, CreditCard, Loader2, Lock, Pencil } from "lu
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { clearCart, getCart, getCartSummary, type CartItem } from "@/lib/cart";
 import { formatMoney } from "@/lib/format";
+import { calculateCheckoutTotals, fulfillmentEnabled, type ShippingSettings } from "@/lib/shipping";
 
 type SquareConfig = {
   environment: "sandbox" | "production";
@@ -141,7 +142,7 @@ function component(place: GooglePlace, type: string, field: "long_name" | "short
   return place.address_components?.find((item) => item.types.includes(type))?.[field] ?? "";
 }
 
-export function SquareCheckoutPage() {
+export function SquareCheckoutPage({ shippingSettings }: { shippingSettings: ShippingSettings }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [customer, setCustomer] = useState<CustomerInfo>(defaultCustomer);
   const [step, setStep] = useState<1 | 2 | 3>(2);
@@ -153,11 +154,18 @@ export function SquareCheckoutPage() {
   const [turnstileToken, setTurnstileToken] = useState("");
   const [addressAutocompleteReady, setAddressAutocompleteReady] = useState(false);
   const startedAt = useRef(Date.now());
+  const checkoutSessionId = useRef(
+    typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `checkout-${Date.now()}-${Math.random()}`
+  );
   const cardRef = useRef<SquareCard | null>(null);
   const afterpayRef = useRef<SquareAfterpay | null>(null);
   const paymentsRef = useRef<ReturnType<NonNullable<typeof window.Square>["payments"]> | null>(null);
   const addressInputRef = useRef<HTMLInputElement | null>(null);
   const summary = useMemo(() => getCartSummary(items), [items]);
+  const totals = useMemo(
+    () => calculateCheckoutTotals(summary.subtotalCents, customer.fulfillmentType, shippingSettings),
+    [customer.fulfillmentType, shippingSettings, summary.subtotalCents]
+  );
   const needsAddress = customer.fulfillmentType !== "PICKUP";
   const customerInfoValid = !validateCustomer();
 
@@ -170,6 +178,13 @@ export function SquareCheckoutPage() {
       setCustomer(defaultCustomer);
     }
   }, []);
+
+  useEffect(() => {
+    if (!fulfillmentEnabled(customer.fulfillmentType, shippingSettings)) {
+      const fallback = shippingSettings.localPickupEnabled ? "PICKUP" : shippingSettings.shippingEnabled ? "SHIPPING" : "DROPOFF";
+      updateCustomer("fulfillmentType", fallback);
+    }
+  }, [customer.fulfillmentType, shippingSettings]);
 
   useEffect(() => {
     window.kkTurnstileCallback = (token: string) => setTurnstileToken(token);
@@ -207,7 +222,7 @@ export function SquareCheckoutPage() {
           const request = payments.paymentRequest({
             countryCode: "US",
             currencyCode: "USD",
-            total: { amount: (summary.subtotalCents / 100).toFixed(2), label: "K&K Kustom Kreations order" },
+            total: { amount: (totals.totalCents / 100).toFixed(2), label: "K&K Kustom Kreations order" },
             requestShippingContact: true
           });
           const afterpay = await payments.afterpayClearpay(request);
@@ -227,7 +242,7 @@ export function SquareCheckoutPage() {
       void cardRef.current?.destroy?.();
       void afterpayRef.current?.destroy?.();
     };
-  }, [summary.subtotalCents]);
+  }, [totals.totalCents]);
 
   useEffect(() => {
     const mapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -270,7 +285,8 @@ export function SquareCheckoutPage() {
   }
 
   function validateCustomer() {
-    if (!customer.name.trim() || !customer.email.includes("@")) return "Name and email are required.";
+    if (!fulfillmentEnabled(customer.fulfillmentType, shippingSettings)) return "This fulfillment method is not currently available.";
+    if (customer.name.trim().length < 2 || !customer.email.trim().includes("@")) return "Name and email are required.";
     if (digitsOnly(customer.phone).length !== 10) return "Please enter a valid 10-digit US phone number.";
     if (needsAddress && (!customer.address1.trim() || !customer.city.trim() || !customer.state.trim() || !customer.postalCode.trim())) {
       return "Address, city, state, and ZIP are required for shipping or local dropoff.";
@@ -332,7 +348,7 @@ export function SquareCheckoutPage() {
       if (paymentMethod === "card" && paymentsRef.current?.verifyBuyer) {
         try {
           const verification = await paymentsRef.current.verifyBuyer(tokenResult.token, {
-            amount: (summary.subtotalCents / 100).toFixed(2),
+            amount: (totals.totalCents / 100).toFixed(2),
             billingContact: {
               givenName: customer.name,
               email: customer.email,
@@ -371,6 +387,7 @@ export function SquareCheckoutPage() {
           notes: customer.notes,
           consent: customer.consent,
           marketingConsent: customer.marketingConsent,
+          checkoutSessionId: checkoutSessionId.current,
           kk_started_at: String(startedAt.current),
           kk_website: "",
           turnstileToken
@@ -473,6 +490,7 @@ export function SquareCheckoutPage() {
               <p><span className="font-black">Email:</span> {customer.email}</p>
               <p><span className="font-black">Phone:</span> {formatPhone(customer.phone)}</p>
               <p><span className="font-black">Fulfillment:</span> {customer.fulfillmentType.replace("_", " ").toLowerCase()}</p>
+              <p><span className="font-black">Shipping/fee:</span> {formatMoney(totals.shippingCents)}</p>
               {addressSummary(customer) && <p><span className="font-black">Address:</span> {addressSummary(customer)}</p>}
               {customer.notes && <p><span className="font-black">Notes:</span> {customer.notes}</p>}
             </div>
@@ -481,10 +499,17 @@ export function SquareCheckoutPage() {
               <label className="form-label">
                 Fulfillment
                 <select value={customer.fulfillmentType} onChange={(event) => updateCustomer("fulfillmentType", event.target.value as CustomerInfo["fulfillmentType"])} className="form-control">
-                  <option value="SHIPPING">Shipping</option>
-                  <option value="PICKUP">Local pickup</option>
-                  <option value="DROPOFF">Local dropoff</option>
+                  {shippingSettings.shippingEnabled && <option value="SHIPPING">Shipping</option>}
+                  {shippingSettings.localPickupEnabled && <option value="PICKUP">Local pickup</option>}
+                  {shippingSettings.localDropoffEnabled && <option value="DROPOFF">Local dropoff</option>}
                 </select>
+                <span className="text-xs font-bold text-boutique-charcoal/50">
+                  {customer.fulfillmentType === "SHIPPING"
+                    ? `${shippingSettings.shippingCheckoutMessage} ${totals.freeShippingApplied ? "Free shipping has been applied." : `Shipping: ${formatMoney(totals.shippingCents)}.`}`
+                    : customer.fulfillmentType === "DROPOFF"
+                      ? `Local dropoff fee: ${formatMoney(totals.shippingCents)}.`
+                      : "Local pickup has no shipping charge."}
+                </span>
               </label>
               <label className="form-label">
                 Name
@@ -558,7 +583,21 @@ export function SquareCheckoutPage() {
         </div>
         <div className="mt-4 flex items-center justify-between border-y border-pink-100 py-4">
           <span className="font-bold">Subtotal</span>
-          <span className="text-xl font-black">{formatMoney(summary.subtotalCents)}</span>
+          <span className="font-black">{formatMoney(totals.subtotalCents)}</span>
+        </div>
+        <div className="space-y-2 border-b border-pink-100 py-4 text-sm">
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-bold">{customer.fulfillmentType === "DROPOFF" ? "Local dropoff" : "Shipping"}</span>
+            <span className="font-black">{formatMoney(totals.shippingCents)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <span className="font-bold">Tax</span>
+            <span className="font-black">{formatMoney(totals.taxCents)}</span>
+          </div>
+          <div className="flex items-center justify-between gap-3 pt-2 text-lg">
+            <span className="font-black">Total</span>
+            <span className="font-black text-boutique-pink">{formatMoney(totals.totalCents)}</span>
+          </div>
         </div>
 
         <div className={step === 3 ? "mt-5 grid gap-3" : "mt-5 grid gap-3 opacity-60"}>

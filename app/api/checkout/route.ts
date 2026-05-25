@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSquarePaymentLink, parseCheckoutPayload } from "@/lib/square";
+import { calculateServerCheckoutTotals, createSquarePaymentLink, parseCheckoutPayload } from "@/lib/square";
 import { validateCheckoutInventory } from "@/lib/cart-validation";
 import { guardPublicSubmission, hasUsableCustomerInfo } from "@/lib/anti-bot";
 
@@ -17,6 +17,11 @@ export async function POST(request: Request) {
   if (!guard.ok) return NextResponse.json({ error: guard.message }, { status: 429 });
   if (!hasUsableCustomerInfo({ name: parsed.data.name, email: parsed.data.email, phone: parsed.data.phone })) {
     return NextResponse.json({ error: "Please enter valid customer contact information." }, { status: 400 });
+  }
+  try {
+    await calculateServerCheckoutTotals(parsed.data);
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Fulfillment settings are not available." }, { status: 400 });
   }
   const inventoryError = await validateCheckoutInventory(parsed.data.items);
   if (inventoryError) {

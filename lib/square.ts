@@ -2,26 +2,43 @@ import "server-only";
 
 import { z } from "zod";
 import { hasDatabaseUrl, prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/data";
+import { calculateCheckoutTotals, fulfillmentEnabled, parseShippingSettings, type CheckoutTotals } from "@/lib/shipping";
 
-const checkoutSchema = z.object({
+const checkoutBaseSchema = z.object({
   items: z.array(z.object({
-    productId: z.string(),
-    name: z.string(),
+    productId: z.string().min(1),
+    name: z.string().trim().min(1),
     priceCents: z.number().int().positive(),
-    quantity: z.number().int().positive()
+    quantity: z.number().int().positive().max(99)
   })).min(1),
   fulfillmentType: z.enum(["SHIPPING", "PICKUP", "DROPOFF"]),
-  name: z.string().min(1),
-  email: z.string().email(),
-  phone: z.string().min(7),
-  address1: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  postalCode: z.string().optional(),
-  notes: z.string().optional(),
+  name: z.string().trim().min(2),
+  email: z.string().trim().toLowerCase().email(),
+  phone: z.string().trim().regex(/^\d{10}$/, "A valid 10-digit phone number is required."),
+  address1: z.string().trim().optional(),
+  city: z.string().trim().optional(),
+  state: z.string().trim().optional(),
+  postalCode: z.string().trim().optional(),
+  notes: z.string().trim().optional(),
   consent: z.literal(true),
   marketingConsent: z.boolean().optional()
 });
+
+function validateCheckoutFields(value: z.infer<typeof checkoutBaseSchema>, ctx: z.RefinementCtx) {
+  const fakeNames = new Set(["test", "asdf", "unknown", "customer", "square customer", "n/a", "na"]);
+  if (fakeNames.has(value.name.toLowerCase())) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["name"], message: "Please enter a valid customer name." });
+  }
+  if (["SHIPPING", "DROPOFF"].includes(value.fulfillmentType)) {
+    if (!value.address1 || value.address1.length < 4) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["address1"], message: "Street address is required." });
+    if (!value.city || value.city.length < 2) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["city"], message: "City is required." });
+    if (!value.state || value.state.length < 2) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["state"], message: "State is required." });
+    if (!value.postalCode || !/^\d{5}(-\d{4})?$/.test(value.postalCode)) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["postalCode"], message: "Valid ZIP code is required." });
+  }
+}
+
+const checkoutSchema = checkoutBaseSchema.superRefine(validateCheckoutFields);
 
 export type CheckoutPayload = z.infer<typeof checkoutSchema>;
 
@@ -29,16 +46,26 @@ export function parseCheckoutPayload(input: unknown) {
   return checkoutSchema.safeParse(input);
 }
 
-const directPaymentSchema = checkoutSchema.extend({
+const directPaymentSchema = checkoutBaseSchema.extend({
   sourceId: z.string().min(1),
   verificationToken: z.string().optional(),
+  checkoutSessionId: z.string().min(8).max(120).optional(),
   paymentMethod: z.enum(["card", "afterpay_clearpay"]).default("card")
-});
+}).superRefine(validateCheckoutFields);
 
 export type DirectPaymentPayload = z.infer<typeof directPaymentSchema>;
 
 export function parseDirectPaymentPayload(input: unknown) {
   return directPaymentSchema.safeParse(input);
+}
+
+export async function calculateServerCheckoutTotals(payload: CheckoutPayload) {
+  const settings = parseShippingSettings(await getSettings());
+  if (!fulfillmentEnabled(payload.fulfillmentType, settings)) {
+    throw new Error("The selected fulfillment method is not currently available.");
+  }
+  const subtotalCents = payload.items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+  return calculateCheckoutTotals(subtotalCents, payload.fulfillmentType, settings);
 }
 
 export function squareConfig() {
@@ -110,9 +137,9 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
     throw new Error(`Missing Square configuration: SQUARE_${config.env === "production" ? "PRODUCTION" : "SANDBOX"}_LOCATION_ID`);
   }
 
-  const amountCents = payload.items.reduce((sum, item) => sum + item.priceCents * item.quantity, 0);
+  const totals = await calculateServerCheckoutTotals(payload);
   const address = [payload.address1, payload.city, payload.state, payload.postalCode].filter(Boolean).join(", ");
-  const orderId = await createSquareOrderForDirectPayment(payload, locationId);
+  const orderId = await createSquareOrderForDirectPayment(payload, locationId, totals);
   const response = await fetch(`${config.baseUrl}/v2/payments`, {
     method: "POST",
     headers: {
@@ -122,10 +149,10 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
     },
     body: JSON.stringify({
       source_id: payload.sourceId,
-      idempotency_key: crypto.randomUUID(),
+      idempotency_key: payload.checkoutSessionId ?? crypto.randomUUID(),
       verification_token: payload.verificationToken || undefined,
       amount_money: {
-        amount: amountCents,
+        amount: totals.totalCents,
         currency: "USD"
       },
       location_id: locationId,
@@ -138,6 +165,8 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
         `Customer: ${payload.name}`,
         `Phone: ${payload.phone}`,
         address && `Address: ${address}`,
+        `Shipping/fee: ${(totals.shippingCents / 100).toFixed(2)}`,
+        `Tax: ${(totals.taxCents / 100).toFixed(2)}`,
         payload.notes && `Notes: ${payload.notes}`,
         `Payment method: ${payload.paymentMethod}`,
         `Required consent: yes`,
@@ -160,7 +189,7 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
   return result.payment as { id: string; order_id?: string; status?: string };
 }
 
-async function createSquareOrderForDirectPayment(payload: DirectPaymentPayload, locationId: string) {
+async function createSquareOrderForDirectPayment(payload: DirectPaymentPayload, locationId: string, totals: CheckoutTotals) {
   const config = squareConfig();
   const productIds = payload.items.map((item) => item.productId);
   const products = hasDatabaseUrl()
@@ -199,6 +228,19 @@ async function createSquareOrderForDirectPayment(payload: DirectPaymentPayload, 
             note: payload.notes || undefined
           };
         }),
+        service_charges: totals.shippingCents > 0
+          ? [
+              {
+                name: payload.fulfillmentType === "DROPOFF" ? "Local dropoff fee" : "Shipping",
+                amount_money: {
+                  amount: totals.shippingCents,
+                  currency: "USD"
+                },
+                calculation_phase: "TOTAL_PHASE",
+                taxable: false
+              }
+            ]
+          : undefined,
         fulfillments: [
           {
             type: payload.fulfillmentType === "SHIPPING" ? "SHIPMENT" : "PICKUP",
@@ -261,12 +303,15 @@ export async function createSquarePaymentLink(payload: CheckoutPayload) {
   }
 
   const address = [payload.address1, payload.city, payload.state, payload.postalCode].filter(Boolean).join(", ");
+  const totals = await calculateServerCheckoutTotals(payload);
   const noteLines = [
     `Fulfillment: ${payload.fulfillmentType}`,
     `Customer: ${payload.name}`,
     `Email: ${payload.email}`,
     `Phone: ${payload.phone}`,
     address && `Address: ${address}`,
+    `Shipping/fee: ${(totals.shippingCents / 100).toFixed(2)}`,
+    `Tax: ${(totals.taxCents / 100).toFixed(2)}`,
     payload.notes && `Notes: ${payload.notes}`,
     `Required consent: yes`,
     `Marketing consent: ${payload.marketingConsent ? "yes" : "no"}`
@@ -292,6 +337,19 @@ export async function createSquarePaymentLink(payload: CheckoutPayload) {
         },
         note: payload.notes || undefined
       })),
+      service_charges: totals.shippingCents > 0
+        ? [
+            {
+              name: payload.fulfillmentType === "DROPOFF" ? "Local dropoff fee" : "Shipping",
+              amount_money: {
+                amount: totals.shippingCents,
+                currency: "USD"
+              },
+              calculation_phase: "TOTAL_PHASE",
+              taxable: false
+            }
+          ]
+        : undefined,
       fulfillments: [
         {
           type: payload.fulfillmentType === "SHIPPING" ? "SHIPMENT" : "PICKUP",

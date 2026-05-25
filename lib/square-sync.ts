@@ -45,6 +45,10 @@ type SquareOrder = {
   updated_at?: string;
   total_money?: { amount?: number };
   net_amount_due_money?: { amount?: number };
+  service_charges?: {
+    name?: string;
+    amount_money?: { amount?: number };
+  }[];
   line_items?: {
     name?: string;
     quantity?: string;
@@ -626,6 +630,10 @@ export async function importSquareOrders() {
     for (const squareOrder of orders) {
       const recipient = mapRecipient(squareOrder);
       const totalCents = squareOrder.total_money?.amount ?? squareOrder.net_amount_due_money?.amount ?? 0;
+      const shippingCents = (squareOrder.service_charges ?? [])
+        .filter((charge) => /shipping|dropoff|delivery/i.test(charge.name ?? ""))
+        .reduce((sum, charge) => sum + (charge.amount_money?.amount ?? 0), 0);
+      const lineSubtotalCents = (squareOrder.line_items ?? []).reduce((sum, item) => sum + (item.total_money?.amount ?? 0), 0);
       const existing = await prisma.order.findFirst({ where: { squareOrderId: squareOrder.id } });
       const customerModel = prisma.customer as any;
       const usableCustomerInfo = hasUsableCustomerInfo({
@@ -684,7 +692,9 @@ export async function importSquareOrders() {
         fulfillmentType: mapFulfillment(squareOrder),
         paymentStatus: squareOrder.state === "COMPLETED" ? "PAID" as const : "PENDING" as const,
         status: squareOrder.state === "COMPLETED" ? "PAID" as const : "PENDING" as const,
-        subtotalCents: totalCents,
+        subtotalCents: lineSubtotalCents || Math.max(0, totalCents - shippingCents),
+        shippingCents,
+        taxCents: Math.max(0, totalCents - (lineSubtotalCents || 0) - shippingCents),
         totalCents,
         squareOrderId: squareOrder.id,
         squarePaymentId: squareOrder.tenders?.[0]?.id ?? null,
@@ -696,7 +706,8 @@ export async function importSquareOrders() {
         address1: recipient.address?.address_line_1 || null,
         city: recipient.address?.locality || null,
         state: recipient.address?.administrative_district_level_1 || null,
-        postalCode: recipient.address?.postal_code || null
+        postalCode: recipient.address?.postal_code || null,
+        shippingStatus: mapFulfillment(squareOrder) === "SHIPPING" ? "PENDING" : "NOT_REQUIRED"
       };
       const localOrder = existing
         ? await prisma.order.update({ where: { id: existing.id }, data })
