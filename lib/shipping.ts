@@ -7,6 +7,7 @@ export type ShippingSettings = {
   flatShippingRateCents: number;
   freeShippingThresholdCents: number;
   localDropoffFeeCents: number;
+  salesTaxRatePercent: number;
   shippingCheckoutMessage: string;
 };
 
@@ -25,6 +26,7 @@ export const defaultShippingSettings: ShippingSettings = {
   flatShippingRateCents: 600,
   freeShippingThresholdCents: 0,
   localDropoffFeeCents: 0,
+  salesTaxRatePercent: 7,
   shippingCheckoutMessage: "Orders are typically shipped within 2-5 business days."
 };
 
@@ -42,6 +44,13 @@ function booleanFromSetting(value: string | undefined, fallback: boolean) {
   return value === "true" || value === "on";
 }
 
+function percentFromSetting(value: string | undefined, fallback: number) {
+  if (value === undefined || value === "") return fallback;
+  const number = Number(value.replace("%", "").trim());
+  if (!Number.isFinite(number) || number < 0) return fallback;
+  return Math.min(number, 25);
+}
+
 export function parseShippingSettings(settings: Record<string, string>): ShippingSettings {
   const configuredFlatRate = settings.flatShippingRate === undefined ? defaultShippingSettings.flatShippingRateCents : centsFromSetting(settings.flatShippingRate);
   return {
@@ -51,6 +60,7 @@ export function parseShippingSettings(settings: Record<string, string>): Shippin
     flatShippingRateCents: configuredFlatRate,
     freeShippingThresholdCents: centsFromSetting(settings.freeShippingThreshold),
     localDropoffFeeCents: centsFromSetting(settings.localDropoffFee),
+    salesTaxRatePercent: percentFromSetting(settings.salesTaxRatePercent, defaultShippingSettings.salesTaxRatePercent),
     shippingCheckoutMessage: settings.shippingCheckoutMessage?.trim() || defaultShippingSettings.shippingCheckoutMessage
   };
 }
@@ -73,7 +83,7 @@ export function calculateCheckoutTotals(
       : fulfillmentType === "DROPOFF"
         ? settings.localDropoffFeeCents
         : 0;
-  const taxCents = 0;
+  const taxCents = Math.round(safeSubtotal * (settings.salesTaxRatePercent / 100));
   return {
     subtotalCents: safeSubtotal,
     shippingCents,

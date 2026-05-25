@@ -226,6 +226,7 @@ export async function saveSettings(_state: AdminState, formData: FormData): Prom
     "localPickupEnabled",
     "localDropoffEnabled",
     "localDropoffFee",
+    "salesTaxRatePercent",
     "shippingCheckoutMessage",
     "customOrdersEnabled"
   ];

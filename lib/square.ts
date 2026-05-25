@@ -189,6 +189,33 @@ export async function createSquarePayment(payload: DirectPaymentPayload) {
   return result.payment as { id: string; order_id?: string; status?: string };
 }
 
+function squareServiceCharges(payload: CheckoutPayload, totals: CheckoutTotals) {
+  return [
+    totals.shippingCents > 0
+      ? {
+          name: payload.fulfillmentType === "DROPOFF" ? "Local dropoff fee" : "Shipping",
+          amount_money: {
+            amount: totals.shippingCents,
+            currency: "USD"
+          },
+          calculation_phase: "TOTAL_PHASE",
+          taxable: false
+        }
+      : null,
+    totals.taxCents > 0
+      ? {
+          name: "Sales tax",
+          amount_money: {
+            amount: totals.taxCents,
+            currency: "USD"
+          },
+          calculation_phase: "TOTAL_PHASE",
+          taxable: false
+        }
+      : null
+  ].filter(Boolean);
+}
+
 async function createSquareOrderForDirectPayment(payload: DirectPaymentPayload, locationId: string, totals: CheckoutTotals) {
   const config = squareConfig();
   const productIds = payload.items.map((item) => item.productId);
@@ -228,19 +255,7 @@ async function createSquareOrderForDirectPayment(payload: DirectPaymentPayload, 
             note: payload.notes || undefined
           };
         }),
-        service_charges: totals.shippingCents > 0
-          ? [
-              {
-                name: payload.fulfillmentType === "DROPOFF" ? "Local dropoff fee" : "Shipping",
-                amount_money: {
-                  amount: totals.shippingCents,
-                  currency: "USD"
-                },
-                calculation_phase: "TOTAL_PHASE",
-                taxable: false
-              }
-            ]
-          : undefined,
+        service_charges: squareServiceCharges(payload, totals),
         fulfillments: [
           {
             type: payload.fulfillmentType === "SHIPPING" ? "SHIPMENT" : "PICKUP",
@@ -337,19 +352,7 @@ export async function createSquarePaymentLink(payload: CheckoutPayload) {
         },
         note: payload.notes || undefined
       })),
-      service_charges: totals.shippingCents > 0
-        ? [
-            {
-              name: payload.fulfillmentType === "DROPOFF" ? "Local dropoff fee" : "Shipping",
-              amount_money: {
-                amount: totals.shippingCents,
-                currency: "USD"
-              },
-              calculation_phase: "TOTAL_PHASE",
-              taxable: false
-            }
-          ]
-        : undefined,
+      service_charges: squareServiceCharges(payload, totals),
       fulfillments: [
         {
           type: payload.fulfillmentType === "SHIPPING" ? "SHIPMENT" : "PICKUP",

@@ -16,7 +16,7 @@ export default async function AdminSettingsPage() {
         <input
           type="hidden"
           name="settingsKeys"
-          value="businessName,businessInfo,contactEmail,contactPhone,facebookUrl,facebookEmbedUrl,shippingText,pickupText,dropoffText,shippingEnabled,flatShippingRate,freeShippingThreshold,localPickupEnabled,localDropoffEnabled,localDropoffFee,shippingCheckoutMessage"
+          value="businessName,businessInfo,contactEmail,contactPhone,facebookUrl,facebookEmbedUrl,shippingText,pickupText,dropoffText,shippingEnabled,flatShippingRate,freeShippingThreshold,localPickupEnabled,localDropoffEnabled,localDropoffFee,salesTaxRatePercent,shippingCheckoutMessage"
         />
         <div className="grid gap-4 lg:grid-cols-2">
           <label className="form-label">Business name<input name="businessName" defaultValue={settings.businessName} className="form-control" /></label>
@@ -56,6 +56,10 @@ export default async function AdminSettingsPage() {
             <label className="form-label">
               Local dropoff fee
               <input name="localDropoffFee" type="number" min="0" step="0.01" defaultValue={shipping.localDropoffFeeCents ? (shipping.localDropoffFeeCents / 100).toFixed(2) : ""} placeholder="Optional" className="form-control" />
+            </label>
+            <label className="form-label">
+              Sales tax percentage
+              <input name="salesTaxRatePercent" type="number" min="0" max="25" step="0.001" defaultValue={shipping.salesTaxRatePercent} className="form-control" />
             </label>
             <label className="form-label lg:col-span-3">
               Checkout shipping message

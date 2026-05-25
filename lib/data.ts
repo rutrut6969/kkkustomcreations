@@ -21,6 +21,7 @@ const defaultSettings: Record<string, string> = {
   localPickupEnabled: "true",
   localDropoffEnabled: "false",
   localDropoffFee: "",
+  salesTaxRatePercent: "7",
   shippingCheckoutMessage: "Orders are typically shipped within 2-5 business days.",
   customOrdersEnabled: "true"
 };
